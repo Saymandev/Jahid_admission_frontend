@@ -51,7 +51,10 @@ export default function StudentsPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'left'>('all')
+  // Initialize statusFilter from URL param if present
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'left'>(
+    statusParam || 'all'
+  )
   const [page, setPage] = useState(1)
   const pageSize = 10
   const [foundStudent, setFoundStudent] = useState<any>(null)
@@ -61,13 +64,11 @@ export default function StudentsPage() {
   useEffect(() => {
     if (statusParam && statusParam !== statusFilter) {
       setStatusFilter(statusParam)
-    }
-  }, [statusParam])
-
-  // Sync URL param with filter
-  useEffect(() => {
-    if (statusParam && statusParam !== statusFilter) {
-      setStatusFilter(statusParam)
+      setPage(1) // Reset to first page when filter changes
+    } else if (!statusParam && statusFilter !== 'all') {
+      // If no status param and filter is not 'all', reset to 'all'
+      setStatusFilter('all')
+      setPage(1)
     }
   }, [statusParam])
 

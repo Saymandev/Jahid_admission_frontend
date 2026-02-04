@@ -44,13 +44,17 @@ export default function DuesPage() {
   const pageSize = 10
   const isStaff = user?.role === 'staff'
 
-  const { data: students, isLoading } = useQuery({
-    queryKey: ['students'],
+  const { data: studentsData, isLoading } = useQuery({
+    queryKey: ['students', 'active'],
     queryFn: async () => {
-      const response = await api.get('/residential/students?status=active')
+      // Fetch all active students for dues calculation (use high limit)
+      const response = await api.get('/residential/students?status=active&limit=1000')
       return response.data
     },
   })
+
+  // Extract students array from paginated response
+  const students = studentsData?.data || []
 
   const { data: dueStatuses, isLoading: loadingDues } = useQuery({
     queryKey: ['student-due-statuses', students?.map((s: any) => s._id)],
