@@ -44,12 +44,16 @@ export default function DuesPage() {
   const pageSize = 10
   const isStaff = user?.role === 'staff'
 
-  const { data: studentsData, isLoading } = useQuery({
-    queryKey: ['students', 'active'],
+  const { data: studentsData, isLoading, error: studentsError } = useQuery({
+    queryKey: ['students', 'active', 'dues', filter],
     queryFn: async () => {
       // Fetch all active students for dues calculation (use high limit)
       const response = await api.get('/residential/students?status=active&limit=1000')
-      return response.data
+      // Handle both paginated and non-paginated responses
+      if (response.data?.data) {
+        return response.data
+      }
+      return { data: Array.isArray(response.data) ? response.data : [], total: 0 }
     },
   })
 
@@ -82,7 +86,7 @@ export default function DuesPage() {
   }, [searchQuery, filter])
 
   const filteredDues = useMemo(() => {
-    if (!dueStatuses) return []
+    if (!dueStatuses || !Array.isArray(dueStatuses)) return []
     
     return dueStatuses.filter((due: StudentDue) => {
       const matchesSearch =
@@ -100,7 +104,13 @@ export default function DuesPage() {
         (filter === 'one' && (due.consecutiveDueMonths === 1 || monthsWithDue === 1)) ||
         (filter === 'nodue' && due.consecutiveDueMonths === 0)
       
-      return matchesSearch && matchesFilter && (due.totalDue > 0 || filter === 'all')
+      // For 'all' filter, show all students (including those with no due)
+      // For other filters, only show students with dues matching the filter
+      if (filter === 'all') {
+        return matchesSearch
+      }
+      
+      return matchesSearch && matchesFilter && due.totalDue > 0
     })
   }, [dueStatuses, searchQuery, filter])
 
@@ -129,6 +139,23 @@ export default function DuesPage() {
             <div className="h-8 bg-gray-200 rounded w-1/4"></div>
             <div className="h-64 bg-gray-200 rounded"></div>
           </div>
+        </div>
+      </ProtectedRoute>
+    )
+  }
+
+  // Show error if students failed to load
+  if (studentsError) {
+    return (
+      <ProtectedRoute>
+        <div className="p-6">
+          <Card>
+            <CardContent className="p-12 text-center">
+              <div className="text-6xl mb-4">⚠️</div>
+              <h3 className="text-lg font-semibold mb-2">Error loading students</h3>
+              <p className="text-secondary text-sm">Please try refreshing the page</p>
+            </CardContent>
+          </Card>
         </div>
       </ProtectedRoute>
     )

@@ -51,25 +51,16 @@ export default function StudentsPage() {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  // Initialize statusFilter from URL param if present
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'left'>(
-    statusParam || 'all'
-  )
+  // Use statusParam directly, fallback to 'all'
+  const statusFilter = (statusParam || 'all') as 'all' | 'active' | 'left'
   const [page, setPage] = useState(1)
   const pageSize = 10
   const [foundStudent, setFoundStudent] = useState<any>(null)
   const [isSearching, setIsSearching] = useState(false)
 
-  // Sync URL param with filter
+  // Reset to page 1 when status param changes
   useEffect(() => {
-    if (statusParam && statusParam !== statusFilter) {
-      setStatusFilter(statusParam)
-      setPage(1) // Reset to first page when filter changes
-    } else if (!statusParam && statusFilter !== 'all') {
-      // If no status param and filter is not 'all', reset to 'all'
-      setStatusFilter('all')
-      setPage(1)
-    }
+    setPage(1)
   }, [statusParam])
 
   const {
@@ -294,7 +285,12 @@ export default function StudentsPage() {
           <Select
             value={statusFilter}
             onChange={(e) => {
-              setStatusFilter(e.target.value as 'all' | 'active' | 'left')
+              const newStatus = e.target.value as 'all' | 'active' | 'left'
+              if (newStatus === 'all') {
+                router.push('/dashboard/students')
+              } else {
+                router.push(`/dashboard/students?status=${newStatus}`)
+              }
               setPage(1)
             }}
             className="w-40"
