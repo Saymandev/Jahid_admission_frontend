@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 248 249 250;
+    --foreground: 32 33 36;
+    --card: 255 255 255;
+    --card-foreground: 32 33 36;
+    --primary: 66 133 244;
+    --primary-foreground: 255 255 255;
+    --secondary: 95 99 104;
+    --secondary-foreground: 255 255 255;
+    --success: 52 168 83;
+    --warning: 251 188 5;
+    --danger: 234 67 53;
+    --border: 224 224 224;
+    --input: 224 224 224;
+    --ring: 66 133 244;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+  }
+}
