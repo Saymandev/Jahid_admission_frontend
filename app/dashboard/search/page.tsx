@@ -86,16 +86,16 @@ export default function SearchPage() {
     const lowerQuery = query.toLowerCase()
 
     // Search rooms
-    if (rooms) {
+    if (rooms && Array.isArray(rooms)) {
       rooms.forEach((room: any) => {
         if (
-          room.name.toLowerCase().includes(lowerQuery) ||
-          (room.floor && room.floor.toLowerCase().includes(lowerQuery))
+          room?.name?.toLowerCase().includes(lowerQuery) ||
+          (room?.floor && room.floor.toLowerCase().includes(lowerQuery))
         ) {
           results.push({
             type: 'room',
             id: room._id,
-            title: room.name,
+            title: room.name || 'Unknown Room',
             subtitle: room.floor || 'Room',
             link: `/dashboard/rooms`,
             icon: '🏠',
@@ -105,19 +105,19 @@ export default function SearchPage() {
     }
 
     // Search students
-    if (students) {
+    if (students && Array.isArray(students)) {
       students.forEach((student: any) => {
         if (
-          student.name.toLowerCase().includes(lowerQuery) ||
-          student.studentId.toLowerCase().includes(lowerQuery) ||
-          student.phone.includes(query) ||
-          student.roomId?.name.toLowerCase().includes(lowerQuery)
+          student?.name?.toLowerCase().includes(lowerQuery) ||
+          student?.studentId?.toLowerCase().includes(lowerQuery) ||
+          student?.phone?.includes(query) ||
+          student?.roomId?.name?.toLowerCase().includes(lowerQuery)
         ) {
           results.push({
             type: 'student',
             id: student._id,
-            title: student.name,
-            subtitle: `${student.studentId} - ${student.roomId?.name || 'No Room'}`,
+            title: student.name || 'Unknown Student',
+            subtitle: `${student.studentId || 'N/A'} - ${student.roomId?.name || 'No Room'}`,
             link: `/dashboard/students/${student._id}`,
             icon: '👤',
           })
@@ -126,19 +126,21 @@ export default function SearchPage() {
     }
 
     // Search transactions
-    if (transactions) {
+    if (transactions && Array.isArray(transactions)) {
       transactions.forEach((txn: any) => {
         const studentName = txn.studentName || txn.admissionStudentName
+        const amount = txn.amount || txn.paidAmount || 0
+        const paymentMethod = txn.paymentMethod || 'Unknown'
         if (
           studentName?.toLowerCase().includes(lowerQuery) ||
-          txn.paymentMethod.toLowerCase().includes(lowerQuery) ||
+          paymentMethod.toLowerCase().includes(lowerQuery) ||
           txn.transactionId?.toLowerCase().includes(lowerQuery)
         ) {
           results.push({
             type: 'transaction',
             id: txn._id,
-            title: `${studentName} - ${txn.amount.toLocaleString()} BDT`,
-            subtitle: `${txn.type === 'residential' ? 'Residential' : 'Coaching'} Payment - ${txn.paymentMethod}`,
+            title: `${studentName || 'Unknown'} - ${amount.toLocaleString()} BDT`,
+            subtitle: `${txn.type === 'residential' ? 'Residential' : 'Coaching'} Payment - ${paymentMethod}`,
             link: `/dashboard/transactions`,
             icon: '💳',
           })
@@ -147,19 +149,19 @@ export default function SearchPage() {
     }
 
     // Search coaching admissions
-    if (coaching) {
+    if (coaching && Array.isArray(coaching)) {
       coaching.forEach((admission: any) => {
         if (
-          admission.studentName.toLowerCase().includes(lowerQuery) ||
-          admission.course.toLowerCase().includes(lowerQuery) ||
-          admission.batch.toLowerCase().includes(lowerQuery) ||
-          admission.phone.includes(query)
+          admission?.studentName?.toLowerCase().includes(lowerQuery) ||
+          admission?.course?.toLowerCase().includes(lowerQuery) ||
+          admission?.batch?.toLowerCase().includes(lowerQuery) ||
+          admission?.phone?.includes(query)
         ) {
           results.push({
             type: 'coaching',
             id: admission._id,
-            title: admission.studentName,
-            subtitle: `${admission.course} - ${admission.batch}`,
+            title: admission.studentName || 'Unknown Student',
+            subtitle: `${admission.course || 'N/A'} - ${admission.batch || 'N/A'}`,
             link: `/dashboard/coaching`,
             icon: '📚',
           })
