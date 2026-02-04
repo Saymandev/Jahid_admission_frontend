@@ -25,35 +25,35 @@ export default function SearchPage() {
   const [page, setPage] = useState(1)
   const pageSize = 10
 
-  const { data: rooms } = useQuery({
+  const { data: roomsData } = useQuery({
     queryKey: ['rooms'],
     queryFn: async () => {
-      const response = await api.get('/residential/rooms')
+      const response = await api.get('/residential/rooms?limit=1000')
       return response.data
     },
     enabled: !!query,
   })
 
-  const { data: students } = useQuery({
+  const { data: studentsData } = useQuery({
     queryKey: ['students'],
     queryFn: async () => {
-      const response = await api.get('/residential/students')
+      const response = await api.get('/residential/students?limit=1000')
       return response.data
     },
     enabled: !!query,
   })
 
-  const { data: transactions } = useQuery({
+  const { data: transactionsData } = useQuery({
     queryKey: ['transactions'],
     queryFn: async () => {
-      const residentialResponse = await api.get('/residential/payments')
-      const coachingResponse = await api.get('/coaching/payments')
-      const residential = residentialResponse.data.map((p: any) => ({
+      const residentialResponse = await api.get('/residential/payments?limit=1000')
+      const coachingResponse = await api.get('/coaching/payments?limit=1000')
+      const residential = (residentialResponse.data?.data || residentialResponse.data || []).map((p: any) => ({
         ...p,
         type: 'residential' as const,
         studentName: p.studentId?.name,
       }))
-      const coaching = coachingResponse.data.map((p: any) => ({
+      const coaching = (coachingResponse.data?.data || coachingResponse.data || []).map((p: any) => ({
         ...p,
         type: 'coaching' as const,
         admissionStudentName: p.admissionId?.studentName,
@@ -64,14 +64,20 @@ export default function SearchPage() {
     enabled: !!query,
   })
 
-  const { data: coaching } = useQuery({
+  const { data: coachingData } = useQuery({
     queryKey: ['coaching-admissions'],
     queryFn: async () => {
-      const response = await api.get('/coaching/admissions')
+      const response = await api.get('/coaching/admissions?limit=1000')
       return response.data
     },
     enabled: !!query,
   })
+
+  // Extract data arrays from paginated responses
+  const rooms = roomsData?.data || roomsData || []
+  const students = studentsData?.data || studentsData || []
+  const transactions = transactionsData || []
+  const coaching = coachingData?.data || coachingData || []
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return []
