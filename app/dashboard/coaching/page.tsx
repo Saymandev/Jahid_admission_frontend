@@ -51,12 +51,16 @@ type PaymentFormData = {
   notes?: string
 }
 
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { cn } from '@/lib/utils'
+
 export default function CoachingPage() {
   const user = useAuthStore((state) => state.user)
   const queryClient = useQueryClient()
   const [showAdmissionForm, setShowAdmissionForm] = useState(false)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [selectedAdmission, setSelectedAdmission] = useState<string | null>(null)
+  const [selectedStudentDetails, setSelectedStudentDetails] = useState<Admission | null>(null)
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -121,9 +125,14 @@ export default function CoachingPage() {
   const totalAdmissions = admissionsData?.total || 0
 
   const { data: stats } = useQuery({
-    queryKey: ['coaching-stats'],
+    queryKey: ['coaching-stats', statusFilter, batchFilter, courseFilter],
     queryFn: async () => {
-      const response = await api.get('/coaching/stats')
+      const params = new URLSearchParams()
+      if (statusFilter !== 'all') params.append('status', statusFilter)
+      if (batchFilter !== 'all') params.append('batch', batchFilter)
+      if (courseFilter !== 'all') params.append('course', courseFilter)
+      
+      const response = await api.get(`/coaching/stats?${params.toString()}`)
       return response.data
     },
   })
@@ -825,6 +834,93 @@ export default function CoachingPage() {
             </div>
           </div>
         )}
+
+        {/* Student Details Dialog */}
+        <Dialog open={!!selectedStudentDetails} onOpenChange={(open: boolean) => !open && setSelectedStudentDetails(null)}>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Student Details</DialogTitle>
+            </DialogHeader>
+            {selectedStudentDetails && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-x-12 gap-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium text-secondary mb-1">Student Information</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-secondary">Name:</span>
+                        <span className="font-semibold">{selectedStudentDetails.studentName}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-secondary">ID:</span>
+                        <span className="font-mono">{selectedStudentDetails.admissionId}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-secondary">Phone:</span>
+                        <span>{selectedStudentDetails.phone}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-secondary">Admission Date:</span>
+                        <span>{new Date(selectedStudentDetails.admissionDate).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium text-secondary mb-1">Course Details</h3>
+                    <div className="space-y-2">
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-secondary">Course:</span>
+                        <span className="font-semibold">{selectedStudentDetails.course}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-secondary">Batch:</span>
+                        <span>{selectedStudentDetails.batch}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-1">
+                        <span className="text-secondary">Status:</span>
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-xs font-semibold",
+                          selectedStudentDetails.status === 'completed' ? "bg-success/10 text-success" :
+                          selectedStudentDetails.status === 'pending' ? "bg-warning/10 text-warning" :
+                          "bg-secondary/10 text-secondary"
+                        )}>
+                          {selectedStudentDetails.status.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-medium text-secondary mb-2">Payment Summary</h3>
+                  <div className="grid grid-cols-3 gap-4 p-4 bg-secondary/5 rounded-lg">
+                    <div className="text-center">
+                      <div className="text-sm text-secondary">Total Fee</div>
+                      <div className="text-xl font-bold">{selectedStudentDetails.totalFee.toLocaleString()} BDT</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm text-secondary">Paid Amount</div>
+                      <div className="text-xl font-bold text-success">{selectedStudentDetails.paidAmount.toLocaleString()} BDT</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-sm text-secondary">Due Amount</div>
+                      <div className="text-xl font-bold text-danger">{selectedStudentDetails.dueAmount.toLocaleString()} BDT</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setSelectedStudentDetails(null)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => handleExportReceipt(selectedStudentDetails._id)}>
+                    Download Receipt
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </ProtectedRoute>
   )

@@ -3,20 +3,19 @@
 import { ProtectedRoute } from '@/components/protected-route'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import api from '@/lib/api'
+import { maskCurrency, maskValue } from '@/lib/mask-value'
 import { getSocket } from '@/lib/socket'
 import { useAuthStore } from '@/store/auth-store'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
-import { maskCurrency, maskValue } from '@/lib/mask-value'
 
 interface DashboardStats {
   totalRooms: number
   activeStudents: number
-  totalDue: number
-  twoPlusMonthsDueStudents: number
+  residentialDue: number
+  coachingDue: number
 }
 
 export default function DashboardPage() {
@@ -131,28 +130,30 @@ export default function DashboardPage() {
             onClick={() => router.push('/dashboard/dues')}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Due</CardTitle>
+              <CardTitle className="text-sm font-medium">Residential Due</CardTitle>
               <span className="text-2xl">💰</span>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-danger">
-                {maskCurrency(stats?.totalDue, user?.role === 'staff')}
+                {maskCurrency(stats?.residentialDue, user?.role === 'staff')}
               </div>
-              <p className="text-xs text-secondary mt-1">Outstanding Amount</p>
+              <p className="text-xs text-secondary mt-1">Outstanding Rent</p>
             </CardContent>
           </Card>
 
           <Card 
             className="hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => router.push('/dashboard/dues?filter=2plus')}
+            onClick={() => router.push('/dashboard/coaching?status=pending')}
           >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">2+ Months Due</CardTitle>
-              <span className="text-2xl">⚠️</span>
+              <CardTitle className="text-sm font-medium">Coaching Due</CardTitle>
+              <span className="text-2xl">📚</span>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-danger">{maskValue(stats?.twoPlusMonthsDueStudents, user?.role === 'staff')}</div>
-              <p className="text-xs text-secondary mt-1">Requires Attention</p>
+              <div className="text-2xl font-bold text-danger">
+                {maskCurrency(stats?.coachingDue, user?.role === 'staff')}
+              </div>
+              <p className="text-xs text-secondary mt-1">Outstanding Fees</p>
             </CardContent>
           </Card>
         </div>
