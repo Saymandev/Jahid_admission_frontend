@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import api from '@/lib/api'
+import { exportToCSV } from '@/lib/csv-export'
 import { maskCurrency, maskValue } from '@/lib/mask-value'
 import { exportAdmissionReceipt } from '@/lib/pdf-export'
 import { showToast } from '@/lib/toast'
@@ -28,6 +29,7 @@ interface Admission {
   paidAmount: number
   dueAmount: number
   status: 'pending' | 'completed' | 'cancelled'
+  admissionDate: string
 }
 
 type AdmissionFormData = {
@@ -39,6 +41,7 @@ type AdmissionFormData = {
   batch: string
   totalFee: string
   admissionDate: string
+  paidAmount?: string
 }
 
 type PaymentFormData = {
@@ -54,8 +57,13 @@ export default function CoachingPage() {
   const [showAdmissionForm, setShowAdmissionForm] = useState(false)
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [selectedAdmission, setSelectedAdmission] = useState<string | null>(null)
+  
+  // Filters
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'completed' | 'cancelled'>('all')
+  const [batchFilter, setBatchFilter] = useState('all')
+  const [courseFilter, setCourseFilter] = useState('all')
+
   const [createNewCourse, setCreateNewCourse] = useState(false)
   const [createNewBatch, setCreateNewBatch] = useState(false)
   const [newCourseValue, setNewCourseValue] = useState('')
@@ -93,10 +101,12 @@ export default function CoachingPage() {
     limit: number
     totalPages: number
   }>({
-    queryKey: ['admissions', statusFilter, page, searchQuery],
+    queryKey: ['admissions', statusFilter, batchFilter, courseFilter, page, searchQuery],
     queryFn: async () => {
       const params = new URLSearchParams()
       if (statusFilter !== 'all') params.append('status', statusFilter)
+      if (batchFilter !== 'all') params.append('batch', batchFilter)
+      if (courseFilter !== 'all') params.append('course', courseFilter)
       params.append('page', page.toString())
       params.append('limit', pageSize.toString())
       if (searchQuery) params.append('search', searchQuery)
@@ -164,6 +174,7 @@ export default function CoachingPage() {
     admissionMutation.mutate({
       ...data,
       totalFee: parseFloat(data.totalFee),
+      paidAmount: data.paidAmount ? parseFloat(data.paidAmount) : 0,
     })
   }
 
@@ -184,6 +195,37 @@ export default function CoachingPage() {
       showToast('Receipt exported successfully!', 'success')
     } catch (error: any) {
       showToast('Failed to export receipt', 'error')
+    }
+  }
+
+  const handleExportSheet = async () => {
+    try {
+      // Fetch all admissions for export (ignoring pagination, but keeping filters)
+      const params = new URLSearchParams()
+      if (statusFilter !== 'all') params.append('status', statusFilter)
+      if (batchFilter !== 'all') params.append('batch', batchFilter)
+      if (courseFilter !== 'all') params.append('course', courseFilter)
+      params.append('limit', '1000') // Fetch up to 1000
+      if (searchQuery) params.append('search', searchQuery)
+
+      const response = await api.get(`/coaching/admissions?${params.toString()}`)
+      const dataToExport = response.data.data.map((ad: Admission) => ({
+        'Student ID': ad.admissionId,
+        'Name': ad.studentName,
+        'Phone': ad.phone,
+        'Course': ad.course,
+        'Batch': ad.batch,
+        'Total Fee': ad.totalFee,
+        'Paid Amount': ad.paidAmount,
+        'Due Amount': ad.dueAmount,
+        'Status': ad.status,
+        'Admission Date': new Date(ad.admissionDate).toLocaleDateString(),
+      }))
+
+      exportToCSV(dataToExport, `admissions-export-${new Date().toISOString().split('T')[0]}.csv`)
+      showToast('Exported successfully!', 'success')
+    } catch (error) {
+      showToast('Failed to export data', 'error')
     }
   }
 
@@ -231,7 +273,7 @@ export default function CoachingPage() {
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setPage(1)
-  }, [searchQuery, statusFilter])
+  }, [searchQuery, statusFilter, batchFilter, courseFilter])
 
   const isAdmin = user?.role === 'admin'
   // Staff can view admissions and record payments but not create/edit/delete
@@ -263,26 +305,51 @@ export default function CoachingPage() {
             <Button onClick={() => setShowAdmissionForm(!showAdmissionForm)}>
               {showAdmissionForm ? 'Cancel' : 'New Admission'}
             </Button>
+            <Button variant="secondary" onClick={handleExportSheet}>
+              Download CSV
+            </Button>
           </div>
         </div>
 
-        {/* Search and Filter */}
-        <div className="flex gap-4">
+        {/* Search and Filters */}
+        <div className="flex flex-wrap gap-4">
           <Input
-            placeholder="Search by name, ID, phone, course, or batch..."
+            placeholder="Search by name, ID, phone..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="max-w-md"
+            className="max-w-xs"
           />
           <Select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="w-40"
+            className="w-32"
           >
             <option value="all">All Status</option>
             <option value="pending">Pending</option>
             <option value="completed">Completed</option>
             <option value="cancelled">Cancelled</option>
+          </Select>
+          
+          <Select
+            value={courseFilter}
+            onChange={(e) => setCourseFilter(e.target.value)}
+            className="w-32"
+          >
+            <option value="all">All Courses</option>
+            {uniqueCourses.map(c => (
+              <option key={c.name} value={c.name}>{c.name}</option>
+            ))}
+          </Select>
+
+          <Select
+            value={batchFilter}
+            onChange={(e) => setBatchFilter(e.target.value)}
+            className="w-32"
+          >
+            <option value="all">All Batches</option>
+            {uniqueBatches.map(b => (
+              <option key={b.name} value={b.name}>{b.name}</option>
+            ))}
           </Select>
         </div>
 
@@ -295,7 +362,7 @@ export default function CoachingPage() {
             <CardContent>
               <div className="space-y-2">
                 {uniqueCourses.length === 0 ? (
-                  <p className="text-secondary">No courses found</p>
+                  <p className="text-secondary">No courses found (in current view)</p>
                 ) : (
                   uniqueCourses.map((course) => (
                     <div
@@ -334,7 +401,7 @@ export default function CoachingPage() {
             <CardContent>
               <div className="space-y-2">
                 {uniqueBatches.length === 0 ? (
-                  <p className="text-secondary">No batches found</p>
+                  <p className="text-secondary">No batches found (in current view)</p>
                 ) : (
                   uniqueBatches.map((batch) => (
                     <div
@@ -413,6 +480,7 @@ export default function CoachingPage() {
             <CardContent>
               <form onSubmit={handleAdmissionSubmit(onAdmissionSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
+                  {/* Existing Fields */}
                   <div className="space-y-2">
                     <Label htmlFor="studentName">Student Name *</Label>
                     <Input
@@ -552,6 +620,20 @@ export default function CoachingPage() {
                       <p className="text-sm text-danger">{admissionErrors.totalFee.message}</p>
                     )}
                   </div>
+                  
+                  {/* New Paid Amount Field */}
+                  <div className="space-y-2">
+                    <Label htmlFor="paidAmount">Paid Amount (BDT) - Optional</Label>
+                    <Input
+                      id="paidAmount"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      {...registerAdmission('paidAmount')}
+                    />
+                    <p className="text-xs text-secondary">Initial payment amount</p>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="admissionDate">Admission Date *</Label>
                     <Input
@@ -647,6 +729,7 @@ export default function CoachingPage() {
                     <div>
                       <CardTitle>{admission.studentName}</CardTitle>
                       <p className="text-sm text-secondary mt-1">ID: {admission.admissionId}</p>
+                      <p className="text-sm text-secondary">Phone: {admission.phone}</p>
                     </div>
                     <div className="flex gap-2">
                       <Button

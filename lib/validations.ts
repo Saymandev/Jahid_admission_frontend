@@ -32,6 +32,7 @@ export const studentSchema = z.object({
   joiningDate: z.string().min(1, 'Joining date is required'),
   monthlyRent: z.string().optional(),
   securityDeposit: z.string().optional(),
+  unionFee: z.string().optional(),
 })
 
 // Payment validation
@@ -69,6 +70,7 @@ export const admissionSchema = z.object({
     return !isNaN(num) && num >= 0
   }, 'Total fee must be a valid number'),
   admissionDate: z.string().min(1, 'Admission date is required'),
+  paidAmount: z.string().optional(),
 })
 
 // Admission payment validation

@@ -9,13 +9,27 @@ import api from '@/lib/api'
 import { maskCurrency } from '@/lib/mask-value'
 import { showToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
-import { roomSchema } from '@/lib/validations'
 import { useAuthStore } from '@/store/auth-store'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { useFieldArray, useForm } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
+import { z } from 'zod'
+
+// Local schema for simplified room creation
+const createRoomSchema = z.object({
+  name: z.string().min(1, 'Room name is required'),
+  floor: z.string().optional(),
+  totalBeds: z.string().refine((val) => {
+    const num = parseInt(val)
+    return !isNaN(num) && num > 0
+  }, 'Total beds must be a positive number'),
+  monthlyRentPerBed: z.string().min(1, 'Monthly rent is required').refine((val) => {
+    const num = parseFloat(val)
+    return !isNaN(num) && num >= 0
+  }, 'Monthly rent must be a valid number'),
+})
 
 interface Bed {
   name: string
@@ -34,13 +48,7 @@ interface Room {
   occupiedBeds: number
 }
 
-type RoomFormData = {
-  name: string
-  floor?: string
-  beds: { name: string; price: string }[]
-  totalBeds: string
-  monthlyRentPerBed?: string
-}
+type RoomFormData = z.infer<typeof createRoomSchema>
 
 type RentFormData = {
   name: string
@@ -72,35 +80,12 @@ export default function RoomsPage() {
     control,
     watch,
   } = useForm<RoomFormData>({
-    resolver: zodResolver(roomSchema),
+    resolver: zodResolver(createRoomSchema),
     defaultValues: {
-      beds: [{ name: '', price: '' }],
+      totalBeds: '',
+      monthlyRentPerBed: '',
     },
   })
-
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'beds',
-  })
-
-  const totalBedsValue = watch('totalBeds')
-
-  // Sync beds array with totalBeds
-  useEffect(() => {
-    const total = parseInt(totalBedsValue || '0')
-    if (total > 0) {
-      const currentLength = fields.length
-      if (total > currentLength) {
-        for (let i = currentLength; i < total; i++) {
-          append({ name: '', price: '' })
-        }
-      } else if (total < currentLength) {
-        for (let i = currentLength - 1; i >= total; i--) {
-          remove(i)
-        }
-      }
-    }
-  }, [totalBedsValue, fields.length, append, remove])
 
   const {
     register: registerRent,
@@ -171,24 +156,21 @@ export default function RoomsPage() {
   })
 
   const onSubmit = (data: RoomFormData) => {
-    const beds = data.beds
-      .filter(bed => bed.name.trim() && bed.price.trim())
-      .map(bed => ({
-        name: bed.name.trim(),
-        price: parseFloat(bed.price),
-      }))
-
-    if (beds.length === 0) {
-      showToast('At least one bed is required', 'error')
-      return
-    }
+    const rentPerBed = parseFloat(data.monthlyRentPerBed)
+    const totalBedsCount = parseInt(data.totalBeds)
+    
+    // Auto-generate beds
+    const beds = Array.from({ length: totalBedsCount }, (_, index) => ({
+      name: `Bed ${index + 1}`,
+      price: rentPerBed,
+    }))
 
     createMutation.mutate({
       name: data.name,
       floor: data.floor || undefined,
       beds,
-      totalBeds: beds.length,
-      monthlyRentPerBed: data.monthlyRentPerBed ? parseFloat(data.monthlyRentPerBed) : undefined,
+      totalBeds: totalBedsCount,
+      monthlyRentPerBed: rentPerBed,
     })
   }
 
@@ -298,6 +280,21 @@ export default function RoomsPage() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="monthlyRentPerBed">Monthly Rent per Bed (BDT) *</Label>
+                    <Input
+                      id="monthlyRentPerBed"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="e.g., 5000"
+                      {...register('monthlyRentPerBed')}
+                    />
+                    {errors.monthlyRentPerBed && (
+                      <p className="text-sm text-danger">{errors.monthlyRentPerBed.message}</p>
+                    )}
+                    <p className="text-xs text-secondary">This price will apply to all beds in the room</p>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="totalBeds">Total Beds *</Label>
                     <Input
                       id="totalBeds"
@@ -308,67 +305,8 @@ export default function RoomsPage() {
                     {errors.totalBeds && (
                       <p className="text-sm text-danger">{errors.totalBeds.message}</p>
                     )}
-                    <p className="text-xs text-secondary">Enter the number of beds, then fill in each bed's details below</p>
+                    <p className="text-xs text-secondary">We'll automatically name them Bed 1, Bed 2, etc.</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="monthlyRentPerBed">Average Rent per Bed (BDT) - Optional</Label>
-                    <Input
-                      id="monthlyRentPerBed"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      {...register('monthlyRentPerBed')}
-                    />
-                    <p className="text-xs text-secondary">Leave empty to calculate from bed prices</p>
-                  </div>
-                </div>
-
-                {/* Beds */}
-                <div className="space-y-4 border-t pt-6">
-                  <div className="flex items-center gap-2">
-                    <Label className="text-base font-semibold">Beds *</Label>
-                    <span className="text-xs text-secondary">({fields.length} bed{fields.length !== 1 ? 's' : ''})</span>
-                  </div>
-                  <div className="space-y-3">
-                    {fields.map((field, index) => (
-                      <div key={field.id} className="grid grid-cols-2 gap-4 p-4 border-2 rounded-lg bg-card hover:border-primary/30 transition-colors">
-                        <div className="space-y-2">
-                          <Label htmlFor={`beds.${index}.name`} className="text-sm font-medium">
-                            Bed Name *
-                          </Label>
-                          <Input
-                            id={`beds.${index}.name`}
-                            placeholder="e.g., Bed 1, Window Bed"
-                            className="h-10"
-                            {...register(`beds.${index}.name` as const)}
-                          />
-                          {errors.beds?.[index]?.name && (
-                            <p className="text-xs text-danger mt-1">{errors.beds[index]?.name?.message}</p>
-                          )}
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor={`beds.${index}.price`} className="text-sm font-medium">
-                            Price (BDT) *
-                          </Label>
-                          <Input
-                            id={`beds.${index}.price`}
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            placeholder="5000"
-                            className="h-10"
-                            {...register(`beds.${index}.price` as const)}
-                          />
-                          {errors.beds?.[index]?.price && (
-                            <p className="text-xs text-danger mt-1">{errors.beds[index]?.price?.message}</p>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  {errors.beds && (
-                    <p className="text-sm text-danger">{errors.beds.message}</p>
-                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">

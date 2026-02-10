@@ -223,27 +223,44 @@ export default function StudentDetailPage() {
             </Button>
             {student.status === 'active' && user?.role === 'admin' && (
               <>
-                {dueStatus?.totalDue > 0 && student.securityDeposit > 0 && (
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const useDeposit = confirm(
-                        `Use security deposit (${student.securityDeposit.toLocaleString()} BDT) to pay dues (${dueStatus.totalDue.toLocaleString()} BDT)?`
-                      )
-                      if (useDeposit) {
-                        setUseSecurityDepositForCheckout(true)
-                        checkoutMutation.mutate(true)
-                      }
-                    }}
-                    disabled={checkoutMutation.isPending}
-                  >
-                    Checkout (Use Security Deposit)
-                  </Button>
-                )}
+                {/* Checkout Confirmation Dialog */}
                 <Button
                   variant="destructive"
-                  onClick={() => checkoutMutation.mutate(useSecurityDepositForCheckout)}
-                  disabled={checkoutMutation.isPending || (dueStatus?.totalDue > 0 && !useSecurityDepositForCheckout)}
+                  onClick={() => {
+                    const securityDeposit = student.securityDeposit || 0
+                    const totalAdvance = dueStatus?.totalAdvance || 0
+                    const totalDue = dueStatus?.totalDue || 0
+                    const refundable = securityDeposit + totalAdvance
+                    
+                    if (totalDue > 0) {
+                      // Due scenario - prefer using Security Deposit
+                      const confirmMsg = `Student has outstanding dues: ${totalDue} BDT.
+Security Deposit: ${securityDeposit} BDT
+Advance: ${totalAdvance} BDT
+
+Do you want to checkout and ADJUST dues from Security Deposit?`
+                      if (confirm(confirmMsg)) {
+                         setUseSecurityDepositForCheckout(true)
+                         checkoutMutation.mutate(true)
+                      }
+                    } else {
+                      // Refund scenario
+                      const confirmMsg = `Ready to Checkout?
+
+Refund Calculation:
++ Security Deposit: ${securityDeposit} BDT
++ Unused Advance: ${totalAdvance} BDT
+--------------------------------
+= Total Refundable: ${refundable} BDT
+
+Do you want to proceed with Checkout and potentially record this Refund?`
+                      if (confirm(confirmMsg)) {
+                        setUseSecurityDepositForCheckout(false)
+                        checkoutMutation.mutate(false)
+                      }
+                    }
+                  }}
+                  disabled={checkoutMutation.isPending}
                 >
                   {checkoutMutation.isPending ? 'Processing...' : 'Checkout'}
                 </Button>
