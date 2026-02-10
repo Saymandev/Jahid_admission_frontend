@@ -55,8 +55,10 @@ export default function TransactionDetailPage() {
     queryFn: async () => {
       // Try to find in residential payments first
       try {
-        const residentialResponse = await api.get('/residential/payments')
-        const found = residentialResponse.data.find((p: any) => p._id === transactionId)
+        const residentialResponse = await api.get('/residential/payments?limit=100')
+        // Residential returns paginated response { data: [...], total: ... }
+        const payments = residentialResponse.data.data || []
+        const found = payments.find((p: any) => p._id === transactionId)
         if (found) {
           return { ...found, type: 'residential' as const }
         }
