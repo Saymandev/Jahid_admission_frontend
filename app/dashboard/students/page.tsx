@@ -41,6 +41,7 @@ type StudentFormData = {
   joiningDate: string
   monthlyRent?: string
   securityDeposit?: string
+  unionFee?: string
 }
 
 export default function StudentsPage() {
@@ -231,6 +232,7 @@ export default function StudentsPage() {
       bedName: bedName,
       monthlyRent: data.monthlyRent ? parseFloat(data.monthlyRent) : undefined,
       securityDeposit: data.securityDeposit ? parseFloat(data.securityDeposit) : undefined,
+      unionFee: data.unionFee ? parseFloat(data.unionFee) : undefined,
     })
   }
 
@@ -498,6 +500,17 @@ export default function StudentsPage() {
                       min="0"
                       step="0.01"
                       {...register('securityDeposit')}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="unionFee">Union Fee (BDT)</Label>
+                    <Input
+                      id="unionFee"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="One-time non-refundable fee"
+                      {...register('unionFee')}
                     />
                   </div>
                 </div>

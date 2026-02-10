@@ -58,6 +58,7 @@ type RentFormData = {
   joiningDate: string
   monthlyRent?: string
   securityDeposit?: string
+  unionFee?: string
 }
 
 export default function RoomsPage() {
@@ -187,6 +188,7 @@ export default function RoomsPage() {
       joiningDate: new Date(data.joiningDate).toISOString(),
       monthlyRent: data.monthlyRent ? parseFloat(data.monthlyRent) : undefined,
       securityDeposit: data.securityDeposit ? parseFloat(data.securityDeposit) : undefined,
+      unionFee: data.unionFee ? parseFloat(data.unionFee) : undefined,
     })
   }
 
@@ -426,6 +428,17 @@ export default function RoomsPage() {
                         {...registerRent('securityDeposit')}
                       />
                     </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="rent-unionFee">Union Fee (BDT)</Label>
+                        <Input
+                          id="rent-unionFee"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="One-time non-refundable fee"
+                          {...registerRent('unionFee')}
+                        />
+                      </div>
                   </div>
                   <div className="flex gap-3 pt-4">
                     <Button 
