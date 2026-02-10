@@ -30,7 +30,7 @@ const createRoomSchema = z.object({
     return !isNaN(num) && num >= 0
   }, 'Monthly rent must be a valid number'),
 })
-
+// hello
 interface Bed {
   name: string
   price: number
