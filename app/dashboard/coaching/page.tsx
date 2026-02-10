@@ -744,6 +744,13 @@ export default function CoachingPage() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => setSelectedStudentDetails(admission)}
+                      >
+                        View Details
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleExportReceipt(admission._id)}
                       >
                         Export Receipt
