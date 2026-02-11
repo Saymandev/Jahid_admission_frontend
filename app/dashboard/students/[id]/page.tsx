@@ -22,6 +22,7 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 type PaymentFormData = {
+  type: 'rent' | 'security' | 'union_fee' | 'other'
   billingMonth: string
   paidAmount: string
   paymentMethod: 'cash' | 'bkash' | 'bank'
@@ -29,6 +30,7 @@ type PaymentFormData = {
   notes?: string
   isAdvance?: boolean
 }
+
 
 export default function StudentDetailPage() {
   const params = useParams()
@@ -42,7 +44,12 @@ export default function StudentDetailPage() {
   const [useSecurityDepositForCheckout, setUseSecurityDepositForCheckout] = useState(false)
   const [showAdvanceApplications, setShowAdvanceApplications] = useState(false)
   const [showReactivateForm, setShowReactivateForm] = useState(false)
+  const [showCheckoutForm, setShowCheckoutForm] = useState(false)
+  const [refundAmount, setRefundAmount] = useState(0)
+  const [useSecurityForDues, setUseSecurityForDues] = useState(true)
   const [reactivateRoomId, setReactivateRoomId] = useState('')
+
+
 
   const [selectedBillingMonth, setSelectedBillingMonth] = useState(new Date().toISOString().slice(0, 7))
 
@@ -56,13 +63,15 @@ export default function StudentDetailPage() {
   } = useForm<PaymentFormData>({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
+      type: 'rent',
       billingMonth: new Date().toISOString().slice(0, 7),
       paymentMethod: 'cash',
     },
   })
 
+
   const billingMonthValue = watch('billingMonth')
-  
+
   useEffect(() => {
     if (billingMonthValue) {
       setSelectedBillingMonth(billingMonthValue)
@@ -135,18 +144,21 @@ export default function StudentDetailPage() {
   })
 
   const checkoutMutation = useMutation({
-    mutationFn: async (useSecurityDeposit: boolean = false) => {
+    mutationFn: async ({ useSecurityDeposit = false, refundAmount = 0 }: { useSecurityDeposit?: boolean, refundAmount?: number }) => {
       const response = await api.post(`/residential/students/${studentId}/checkout`, {
         useSecurityDeposit,
+        refundAmount,
       })
       return response.data
     },
+
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['student', studentId] })
       queryClient.invalidateQueries({ queryKey: ['students'] })
       // Export checkout statement
       exportCheckoutStatement(data)
       showToast('Student checked out successfully! Statement exported.', 'success')
+      setShowCheckoutForm(false)
       router.push('/dashboard/students')
     },
     onError: (error: any) => {
@@ -175,14 +187,16 @@ export default function StudentDetailPage() {
   const onPaymentSubmit = (data: PaymentFormData) => {
     paymentMutation.mutate({
       studentId,
-      billingMonth: data.isAdvance ? undefined : data.billingMonth,
+      type: data.type,
+      billingMonth: data.type === 'rent' && !data.isAdvance ? data.billingMonth : undefined,
       paidAmount: parseFloat(data.paidAmount),
       paymentMethod: data.paymentMethod,
       transactionId: data.transactionId,
       notes: data.notes,
-      isAdvance: data.isAdvance || false,
+      isAdvance: data.type === 'rent' ? data.isAdvance : false,
     })
   }
+
 
   const handleExportLedger = () => {
     if (student && dueStatus) {
@@ -191,7 +205,17 @@ export default function StudentDetailPage() {
     }
   }
 
+  useEffect(() => {
+    if (showCheckoutForm && student && dueStatus) {
+      const securityDeposit = student.securityDeposit || 0
+      const totalAdvance = dueStatus.totalAdvance || 0
+      const totalDue = dueStatus.totalDue || 0
+      setRefundAmount(Math.max(0, securityDeposit + totalAdvance - totalDue))
+    }
+  }, [showCheckoutForm, student, dueStatus])
+
   if (!student) {
+
     return (
       <ProtectedRoute>
         <div className="p-6">Loading...</div>
@@ -203,8 +227,8 @@ export default function StudentDetailPage() {
     dueStatus?.dueStatus === 'no_due'
       ? 'text-success'
       : dueStatus?.dueStatus === 'one_month'
-      ? 'text-warning'
-      : 'text-danger'
+        ? 'text-warning'
+        : 'text-danger'
 
   return (
     <ProtectedRoute>
@@ -222,58 +246,23 @@ export default function StudentDetailPage() {
               Export Ledger
             </Button>
             {student.status === 'active' && user?.role === 'admin' && (
-              <>
-                {/* Checkout Confirmation Dialog */}
-                <Button
-                  variant="destructive"
-                  onClick={() => {
-                    const securityDeposit = student.securityDeposit || 0
-                    const totalAdvance = dueStatus?.totalAdvance || 0
-                    const totalDue = dueStatus?.totalDue || 0
-                    const refundable = securityDeposit + totalAdvance
-                    
-                    if (totalDue > 0) {
-                      // Due scenario - prefer using Security Deposit
-                      const confirmMsg = `Student has outstanding dues: ${totalDue} BDT.
-Security Deposit: ${securityDeposit} BDT
-Advance: ${totalAdvance} BDT
-
-Do you want to checkout and ADJUST dues from Security Deposit?`
-                      if (confirm(confirmMsg)) {
-                         setUseSecurityDepositForCheckout(true)
-                         checkoutMutation.mutate(true)
-                      }
-                    } else {
-                      // Refund scenario
-                      const confirmMsg = `Ready to Checkout?
-
-Refund Calculation:
-+ Security Deposit: ${securityDeposit} BDT
-+ Unused Advance: ${totalAdvance} BDT
---------------------------------
-= Total Refundable: ${refundable} BDT
-
-Do you want to proceed with Checkout and potentially record this Refund?`
-                      if (confirm(confirmMsg)) {
-                        setUseSecurityDepositForCheckout(false)
-                        checkoutMutation.mutate(false)
-                      }
-                    }
-                  }}
-                  disabled={checkoutMutation.isPending}
-                >
-                  {checkoutMutation.isPending ? 'Processing...' : 'Checkout'}
-                </Button>
-              </>
+              <Button
+                variant="destructive"
+                onClick={() => setShowCheckoutForm(!showCheckoutForm)}
+              >
+                {showCheckoutForm ? 'Cancel Checkout' : 'Checkout'}
+              </Button>
             )}
             {student.status === 'left' && user?.role === 'admin' && (
               <Button
                 variant="default"
-                onClick={() => setShowReactivateForm(true)}
+                disabled={true}
+                title="Reactivation is currently disabled"
               >
                 Reactivate Student
               </Button>
             )}
+
           </div>
         </div>
 
@@ -326,8 +315,8 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                   {dueStatus?.dueStatus === 'no_due'
                     ? 'No Due'
                     : dueStatus?.dueStatus === 'one_month'
-                    ? '1 Month Due'
-                    : '2+ Months Due'}
+                      ? '1 Month Due'
+                      : '2+ Months Due'}
                 </span>
               </div>
               {dueStatus?.consecutiveDueMonths > 0 && (
@@ -408,167 +397,167 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                 {dueStatus?.totalAdvance > 0 ? (
                   <>
                     <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg mb-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-secondary">Total Advance Available</p>
-                        <p className="text-2xl font-bold text-primary">
-                          {maskCurrency(dueStatus.totalAdvance, false)}
-                        </p>
-                        <p className="text-xs text-secondary mt-1">
-                          This advance will automatically apply to future months with outstanding dues
-                        </p>
-                      </div>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={async () => {
-                          if (confirm(`Are you sure you want to delete the advance payment of ${maskCurrency(dueStatus.totalAdvance, false)}? This action cannot be undone if it has been applied to any months.`)) {
-                            try {
-                              await api.delete(`/residential/students/${studentId}/advance-payment`)
-                              queryClient.invalidateQueries({ queryKey: ['student-due-status', studentId] })
-                              queryClient.invalidateQueries({ queryKey: ['student', studentId] })
-                              showToast('Advance payment deleted successfully!', 'success')
-                            } catch (error: any) {
-                              showToast(error.response?.data?.message || 'Failed to delete advance payment', 'error')
-                            }
-                          }
-                        }}
-                      >
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                        Delete Advance
-                      </Button>
-                    </div>
-                  </div>
-                  {showAdvanceApplications && (
-                    <div className="mt-4 pt-4 border-t">
-                      {loadingAdvanceApplications ? (
-                        <div className="text-center py-4">Loading...</div>
-                      ) : (
-                        <div className="space-y-6">
-                          {/* Advance Sources */}
-                          <div>
-                            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              Advance Sources
-                            </h4>
-                            {advanceSources && advanceSources.length > 0 ? (
-                              <div className="space-y-2">
-                                {advanceSources.map((source: any, index: number) => (
-                                  <div
-                                    key={index}
-                                    className={cn(
-                                      'p-3 border rounded-lg',
-                                      source.type === 'explicit' ? 'bg-primary/5 border-primary/20' : 'bg-success/5 border-success/20'
-                                    )}
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div className="flex-1">
-                                        <div className="flex items-center gap-2">
-                                          <span className="font-medium text-sm">
-                                            {source.type === 'explicit' ? 'Explicit Advance Payment' : `Overpayment from ${new Date(source.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
-                                          </span>
-                                          <span className={cn(
-                                            'text-xs px-2 py-0.5 rounded-full',
-                                            source.type === 'explicit' ? 'bg-primary/20 text-primary' : 'bg-success/20 text-success'
-                                          )}>
-                                            {source.type === 'explicit' ? 'Future Payment' : 'Overpayment'}
-                                          </span>
-                                        </div>
-                                        <div className="text-xs text-secondary mt-2 space-y-1">
-                                          <div>
-                                            <span className="font-medium">Advance Amount: </span>
-                                            <span className="text-primary font-semibold">{maskCurrency(source.amount, false)}</span>
-                                          </div>
-                                          {source.type === 'overpayment' && (
-                                            <>
-                                              <div>
-                                                Paid: {maskCurrency(source.paidAmount, false)} | Rent: {maskCurrency(source.rentAmount, false)}
-                                              </div>
-                                              <div>
-                                                Extra: {maskCurrency(source.amount, false)} (became advance)
-                                              </div>
-                                            </>
-                                          )}
-                                          {source.type === 'explicit' && (
-                                            <div>
-                                              Total Paid: {maskCurrency(source.paidAmount, false)}
-                                            </div>
-                                          )}
-                                          <div className="text-xs text-secondary">
-                                            Date: {new Date(source.paymentDate).toLocaleDateString()}
-                                          </div>
-                                          {source.notes && (
-                                            <div className="text-xs italic mt-1">{source.notes}</div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-center py-4 text-secondary text-sm">
-                                No advance sources found.
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Advance Applications */}
-                          <div className="pt-4 border-t">
-                            <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                              </svg>
-                              Advance Applications (When Advance Was Used)
-                            </h4>
-                            {advanceApplications && advanceApplications.length > 0 ? (
-                              <div className="space-y-2">
-                                {advanceApplications.map((app: any) => (
-                                  <div
-                                    key={app._id}
-                                    className="p-3 border rounded-lg bg-primary/5"
-                                  >
-                                    <div className="flex justify-between items-start">
-                                      <div className="flex-1">
-                                        <div className="font-medium text-sm">
-                                          Applied to: {new Date(app.billingMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                                        </div>
-                                        <div className="text-xs text-secondary mt-1 space-y-1">
-                                          <div>
-                                            Amount Applied: <span className="font-medium text-success">{maskCurrency(app.advanceAmountApplied, false)}</span>
-                                          </div>
-                                          <div>
-                                            Due Before: {maskCurrency(app.dueAmountBefore, false)} → Due After: {maskCurrency(app.dueAmountAfter, false)}
-                                          </div>
-                                          <div>
-                                            Remaining Advance: {maskCurrency(app.remainingAdvance, false)}
-                                          </div>
-                                          <div className="text-xs text-secondary">
-                                            Applied on: {new Date(app.createdAt).toLocaleString()}
-                                          </div>
-                                          {app.notes && (
-                                            <div className="text-xs italic">{app.notes}</div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-center py-4 text-secondary text-sm">
-                                No advance applications recorded yet. Advance will be automatically applied when months have outstanding dues.
-                              </div>
-                            )}
-                          </div>
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-secondary">Total Advance Available</p>
+                          <p className="text-2xl font-bold text-primary">
+                            {maskCurrency(dueStatus.totalAdvance, false)}
+                          </p>
+                          <p className="text-xs text-secondary mt-1">
+                            This advance will automatically apply to future months with outstanding dues
+                          </p>
                         </div>
-                      )}
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to delete the advance payment of ${maskCurrency(dueStatus.totalAdvance, false)}? This action cannot be undone if it has been applied to any months.`)) {
+                              try {
+                                await api.delete(`/residential/students/${studentId}/advance-payment`)
+                                queryClient.invalidateQueries({ queryKey: ['student-due-status', studentId] })
+                                queryClient.invalidateQueries({ queryKey: ['student', studentId] })
+                                showToast('Advance payment deleted successfully!', 'success')
+                              } catch (error: any) {
+                                showToast(error.response?.data?.message || 'Failed to delete advance payment', 'error')
+                              }
+                            }
+                          }}
+                        >
+                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                          Delete Advance
+                        </Button>
+                      </div>
                     </div>
-                  )}
+                    {showAdvanceApplications && (
+                      <div className="mt-4 pt-4 border-t">
+                        {loadingAdvanceApplications ? (
+                          <div className="text-center py-4">Loading...</div>
+                        ) : (
+                          <div className="space-y-6">
+                            {/* Advance Sources */}
+                            <div>
+                              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Advance Sources
+                              </h4>
+                              {advanceSources && advanceSources.length > 0 ? (
+                                <div className="space-y-2">
+                                  {advanceSources.map((source: any, index: number) => (
+                                    <div
+                                      key={index}
+                                      className={cn(
+                                        'p-3 border rounded-lg',
+                                        source.type === 'explicit' ? 'bg-primary/5 border-primary/20' : 'bg-success/5 border-success/20'
+                                      )}
+                                    >
+                                      <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-medium text-sm">
+                                              {source.type === 'explicit' ? 'Explicit Advance Payment' : `Overpayment from ${new Date(source.month + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}`}
+                                            </span>
+                                            <span className={cn(
+                                              'text-xs px-2 py-0.5 rounded-full',
+                                              source.type === 'explicit' ? 'bg-primary/20 text-primary' : 'bg-success/20 text-success'
+                                            )}>
+                                              {source.type === 'explicit' ? 'Future Payment' : 'Overpayment'}
+                                            </span>
+                                          </div>
+                                          <div className="text-xs text-secondary mt-2 space-y-1">
+                                            <div>
+                                              <span className="font-medium">Advance Amount: </span>
+                                              <span className="text-primary font-semibold">{maskCurrency(source.amount, false)}</span>
+                                            </div>
+                                            {source.type === 'overpayment' && (
+                                              <>
+                                                <div>
+                                                  Paid: {maskCurrency(source.paidAmount, false)} | Rent: {maskCurrency(source.rentAmount, false)}
+                                                </div>
+                                                <div>
+                                                  Extra: {maskCurrency(source.amount, false)} (became advance)
+                                                </div>
+                                              </>
+                                            )}
+                                            {source.type === 'explicit' && (
+                                              <div>
+                                                Total Paid: {maskCurrency(source.paidAmount, false)}
+                                              </div>
+                                            )}
+                                            <div className="text-xs text-secondary">
+                                              Date: {new Date(source.paymentDate).toLocaleDateString()}
+                                            </div>
+                                            {source.notes && (
+                                              <div className="text-xs italic mt-1">{source.notes}</div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-secondary text-sm">
+                                  No advance sources found.
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Advance Applications */}
+                            <div className="pt-4 border-t">
+                              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Advance Applications (When Advance Was Used)
+                              </h4>
+                              {advanceApplications && advanceApplications.length > 0 ? (
+                                <div className="space-y-2">
+                                  {advanceApplications.map((app: any) => (
+                                    <div
+                                      key={app._id}
+                                      className="p-3 border rounded-lg bg-primary/5"
+                                    >
+                                      <div className="flex justify-between items-start">
+                                        <div className="flex-1">
+                                          <div className="font-medium text-sm">
+                                            Applied to: {new Date(app.billingMonth + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                                          </div>
+                                          <div className="text-xs text-secondary mt-1 space-y-1">
+                                            <div>
+                                              Amount Applied: <span className="font-medium text-success">{maskCurrency(app.advanceAmountApplied, false)}</span>
+                                            </div>
+                                            <div>
+                                              Due Before: {maskCurrency(app.dueAmountBefore, false)} → Due After: {maskCurrency(app.dueAmountAfter, false)}
+                                            </div>
+                                            <div>
+                                              Remaining Advance: {maskCurrency(app.remainingAdvance, false)}
+                                            </div>
+                                            <div className="text-xs text-secondary">
+                                              Applied on: {new Date(app.createdAt).toLocaleString()}
+                                            </div>
+                                            {app.notes && (
+                                              <div className="text-xs italic">{app.notes}</div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center py-4 text-secondary text-sm">
+                                  No advance applications recorded yet. Advance will be automatically applied when months have outstanding dues.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
@@ -750,7 +739,102 @@ Do you want to proceed with Checkout and potentially record this Refund?`
           </Card>
         )}
 
+        {showCheckoutForm && student && (
+          <Card className="border-danger/30 bg-danger/5 shadow-lg animate-in fade-in zoom-in duration-300 mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-danger flex items-center gap-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Confirm Student Checkout
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="p-3 bg-white/50 rounded-lg border space-y-2">
+                  <p className="font-medium text-sm border-b pb-1">Calculation Details</p>
+                  <div className="flex justify-between text-sm">
+                    <span>Security Deposit:</span>
+                    <span className="font-semibold">{student.securityDeposit} BDT</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span>Unused Advance:</span>
+                    <span className="font-semibold text-primary">{dueStatus?.totalAdvance || 0} BDT</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-danger">
+                    <span>Outstanding Dues:</span>
+                    <span className="font-semibold">{dueStatus?.totalDue || 0} BDT</span>
+                  </div>
+                  <div className="flex justify-between text-sm border-t pt-1 font-bold">
+                    <span>Recommended Refund:</span>
+                    <span>{Math.max(0, (student.securityDeposit || 0) + (dueStatus?.totalAdvance || 0) - (dueStatus?.totalDue || 0))} BDT</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="refundAmount" className="text-sm font-semibold">
+                      Actual Amount to Return (Refund Amount) *
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="refundAmount"
+                        type="number"
+                        value={refundAmount}
+                        onChange={(e) => setRefundAmount(parseFloat(e.target.value) || 0)}
+                        className="pl-12 text-lg font-bold border-danger/30 focus:border-danger h-12"
+                      />
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-medium">BDT</span>
+                    </div>
+                    <p className="text-xs text-secondary italic">
+                      This amount will be recorded as a 'refund' transaction in the ledger.
+                    </p>
+                  </div>
+
+                  {(dueStatus?.totalDue || 0) > 0 && (
+                    <div className="flex items-center gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                      <input
+                        type="checkbox"
+                        id="useSecurityForDues"
+                        checked={useSecurityForDues}
+                        onChange={(e) => setUseSecurityForDues(e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                      <Label htmlFor="useSecurityForDues" className="text-xs leading-tight cursor-pointer">
+                        Apply Security Deposit to clear outstanding dues before checkout.
+                      </Label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-3 justify-end pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowCheckoutForm(false)}
+                  disabled={checkoutMutation.isPending}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    checkoutMutation.mutate({
+                      useSecurityDeposit: useSecurityForDues,
+                      refundAmount: refundAmount,
+                    })
+                  }}
+                  disabled={checkoutMutation.isPending}
+                >
+                  {checkoutMutation.isPending ? 'Processing...' : 'Confirm Checkout & Record Refund'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {showReactivateForm && student && (
+
           <Card>
             <CardHeader>
               <CardTitle>Reactivate Student</CardTitle>
@@ -883,40 +967,18 @@ Do you want to proceed with Checkout and potentially record this Refund?`
             {showPaymentForm && (
               <div className="mb-6 p-4 border border-border rounded-md">
                 <form onSubmit={handleSubmit(onPaymentSubmit)} className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4 p-3 bg-primary/5 rounded-md">
-                    <input
-                      type="checkbox"
-                      id="isAdvance"
-                      {...register('isAdvance')}
-                      className="w-4 h-4"
-                    />
-                    <Label htmlFor="isAdvance" className="cursor-pointer font-medium">
-                      Record as Advance Payment (for future months)
-                    </Label>
-                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="billingMonth">
-                        {watch('isAdvance') ? 'Reference Month (Optional)' : 'Billing Month *'}
-                      </Label>
-                      <Input
-                        id="billingMonth"
-                        type="month"
-                        {...register('billingMonth')}
-                        disabled={watch('isAdvance')}
-                        min={student?.joiningDate ? new Date(student.joiningDate).toISOString().slice(0, 7) : undefined}
-                      />
-                      {watch('isAdvance') && (
-                        <p className="text-xs text-secondary">
-                          Advance payments will be applied to future months automatically
-                        </p>
-                      )}
-                      {errors.billingMonth && (
-                        <p className="text-sm text-danger">{errors.billingMonth.message}</p>
-                      )}
+                      <Label htmlFor="type">Payment Type *</Label>
+                      <Select id="type" {...register('type')}>
+                        <option value="rent">Rent Payment</option>
+                        <option value="security">Security Deposit</option>
+                        <option value="union_fee">Union Fee</option>
+                        <option value="other">Other Fee</option>
+                      </Select>
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="paidAmount">Paid Amount (BDT) *</Label>
+                      <Label htmlFor="paidAmount">Amount (BDT) *</Label>
                       <Input
                         id="paidAmount"
                         type="number"
@@ -928,6 +990,45 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                         <p className="text-sm text-danger">{errors.paidAmount.message}</p>
                       )}
                     </div>
+                  </div>
+
+                  {watch('type') === 'rent' && (
+                    <div className="flex items-center gap-2 mb-4 p-3 bg-primary/5 rounded-md">
+                      <input
+                        type="checkbox"
+                        id="isAdvance"
+                        {...register('isAdvance')}
+                        className="w-4 h-4"
+                      />
+                      <Label htmlFor="isAdvance" className="cursor-pointer font-medium">
+                        Record as Advance Payment (for future months)
+                      </Label>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-4">
+                    {watch('type') === 'rent' && (
+                      <div className="space-y-2">
+                        <Label htmlFor="billingMonth">
+                          {watch('isAdvance') ? 'Reference Month (Optional)' : 'Billing Month *'}
+                        </Label>
+                        <Input
+                          id="billingMonth"
+                          type="month"
+                          {...register('billingMonth')}
+                          disabled={watch('isAdvance')}
+                          min={student?.joiningDate ? new Date(student.joiningDate).toISOString().slice(0, 7) : undefined}
+                        />
+                        {watch('isAdvance') && (
+                          <p className="text-xs text-secondary">
+                            Advance payments will be applied to future months automatically
+                          </p>
+                        )}
+                        {errors.billingMonth && (
+                          <p className="text-sm text-danger">{errors.billingMonth.message}</p>
+                        )}
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label htmlFor="paymentMethod">Payment Method *</Label>
                       <Select
@@ -961,6 +1062,7 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                     {paymentMutation.isPending ? 'Processing...' : 'Record Payment'}
                   </Button>
                 </form>
+
               </div>
             )}
 
@@ -974,7 +1076,7 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                   selectedMonth={new Date(selectedBillingMonth + '-01')}
                   onMonthSelect={handleMonthSelect}
                 />
-                
+
                 {/* Payment List View */}
                 <div className="mt-6 space-y-2">
                   <h4 className="font-semibold text-sm mb-3">Monthly Payment Summary</h4>
@@ -989,8 +1091,8 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                               ? 'bg-primary/5 border-primary/30'
                               : 'bg-success/5 border-success/30'
                             : payment.status === 'partial'
-                            ? 'bg-warning/5 border-warning/30'
-                            : 'bg-danger/5 border-danger/30'
+                              ? 'bg-warning/5 border-warning/30'
+                              : 'bg-danger/5 border-danger/30'
                         )}
                       >
                         <div className="flex items-center justify-between">
@@ -1012,23 +1114,34 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                               )}
                             </div>
                             <div className="text-xs text-secondary mt-1 space-y-0.5">
-                              <div>
-                                Rent: {maskCurrency(payment.rentAmount, user?.role === 'staff')}
-                              </div>
-                              <div>
-                                Paid: {maskCurrency(payment.paidAmount, user?.role === 'staff')}
-                                {payment.advanceApplied && payment.advanceApplied > 0 && (
-                                  <span className="text-primary ml-1">
-                                    (Advance: {maskCurrency(payment.advanceApplied, user?.role === 'staff')})
-                                  </span>
-                                )}
-                              </div>
-                              {payment.dueAmount > 0 && (
-                                <div className="text-danger">
-                                  Due: {maskCurrency(payment.dueAmount, user?.role === 'staff')}
+                              {payment.type && payment.type !== 'rent' ? (
+                                <div>
+                                  <span className="capitalize font-medium text-primary">{payment.type.replace('_', ' ')}: </span>
+                                  {maskCurrency(payment.paidAmount, user?.role === 'staff')}
                                 </div>
+                              ) : (
+                                <>
+                                  <div>
+                                    Rent: {maskCurrency(payment.rentAmount || 0, user?.role === 'staff')}
+                                  </div>
+                                  <div>
+                                    Paid: {maskCurrency(payment.paidAmount, user?.role === 'staff')}
+                                    {payment.advanceApplied && payment.advanceApplied > 0 && (
+                                      <span className="text-primary ml-1">
+                                        (Advance: {maskCurrency(payment.advanceApplied, user?.role === 'staff')})
+                                      </span>
+                                    )}
+                                  </div>
+                                  {payment.dueAmount > 0 && (
+                                    <div className="text-danger">
+                                      Due: {maskCurrency(payment.dueAmount, user?.role === 'staff')}
+                                    </div>
+                                  )}
+                                </>
                               )}
                             </div>
+
+
                           </div>
                           <div className="text-right">
                             <span
@@ -1039,8 +1152,8 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                                     ? 'bg-primary/20 text-primary'
                                     : 'bg-success/20 text-success'
                                   : payment.status === 'partial'
-                                  ? 'bg-warning/20 text-warning'
-                                  : 'bg-danger/20 text-danger'
+                                    ? 'bg-warning/20 text-warning'
+                                    : 'bg-danger/20 text-danger'
                               )}
                             >
                               {payment.status === 'paid'
@@ -1048,8 +1161,8 @@ Do you want to proceed with Checkout and potentially record this Refund?`
                                   ? 'Paid (Advance)'
                                   : 'Paid'
                                 : payment.status === 'partial'
-                                ? 'Partial'
-                                : 'Unpaid'}
+                                  ? 'Partial'
+                                  : 'Unpaid'}
                             </span>
                           </div>
                         </div>
@@ -1063,5 +1176,6 @@ Do you want to proceed with Checkout and potentially record this Refund?`
         </Card>
       </div>
     </ProtectedRoute>
+
   )
 }
