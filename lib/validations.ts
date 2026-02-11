@@ -39,6 +39,7 @@ export const studentSchema = z.object({
 
 // Payment validation
 export const paymentSchema = z.object({
+  type: z.enum(['rent', 'security', 'union_fee', 'other']).default('rent'),
   billingMonth: z.string().regex(/^\d{4}-\d{2}$/, 'Billing month must be in YYYY-MM format').optional(),
   paidAmount: z.string().refine((val) => {
     const num = parseFloat(val)
@@ -49,15 +50,16 @@ export const paymentSchema = z.object({
   notes: z.string().optional(),
   isAdvance: z.boolean().optional(),
 }).refine((data) => {
-  // If not advance, billing month is required
-  if (!data.isAdvance && !data.billingMonth) {
+  // If type is rent and not advance, billing month is required
+  if (data.type === 'rent' && !data.isAdvance && !data.billingMonth) {
     return false
   }
   return true
 }, {
-  message: 'Billing month is required for regular payments',
+  message: 'Billing month is required for regular rent payments',
   path: ['billingMonth'],
 })
+
 
 // Admission validation
 export const admissionSchema = z.object({
