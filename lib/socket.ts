@@ -9,8 +9,8 @@ export const getSocket = (): Socket => {
       auth: {
         token,
       },
-      transports: ['websocket'],
     })
+
   }
   return socket
 }

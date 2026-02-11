@@ -11,11 +11,15 @@ import { getSocket } from '@/lib/socket'
 import { useAuthStore } from '@/store/auth-store'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
+import { cn } from '@/lib/utils'
 import { useEffect, useMemo, useState } from 'react'
+
 
 interface Transaction {
   _id: string
   type: 'residential' | 'coaching'
+  paymentType?: string
+
   studentName?: string
   admissionStudentName?: string
   amount: number
@@ -38,14 +42,14 @@ export default function TransactionsPage() {
   const [typeFilter, setTypeFilter] = useState<'all' | 'residential' | 'coaching'>('all')
   const [page, setPage] = useState(1)
   const pageSize = 10
-  
+
   // Date and time filters
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [userFilter, setUserFilter] = useState('')
   const [availableUsers, setAvailableUsers] = useState<Array<{ _id: string; name: string; email: string }>>([])
-  
+
   const isAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
 
@@ -65,21 +69,23 @@ export default function TransactionsPage() {
       params.append('page', page.toString())
       params.append('limit', pageSize.toString())
       if (searchQuery) params.append('search', searchQuery)
-      
+
       const response = await api.get(`/residential/payments?${params.toString()}`)
       const residentialData = response.data
-      
+
       // For now, still fetch coaching payments (can be paginated later)
       const coachingResponse = await api.get('/coaching/payments')
-      
+
       const residential = residentialData.data.map((p: any) => ({
         ...p,
         type: 'residential' as const,
+        paymentType: p.type || 'rent',
         studentName: p.studentId?.name,
+
         recordedBy: p.recordedBy,
         updatedAt: p.updatedAt || p.createdAt,
       }))
-      
+
       const coaching = coachingResponse.data.map((p: any) => ({
         ...p,
         type: 'coaching' as const,
@@ -89,25 +95,25 @@ export default function TransactionsPage() {
         paidAmount: p.paidAmount,
         updatedAt: p.updatedAt || p.createdAt,
       }))
-      
+
       // Filter by type, user, and date on frontend (since we're combining two sources)
       let filtered = [...residential, ...coaching]
-      
+
       if (typeFilter !== 'all') {
         filtered = filtered.filter(t => t.type === typeFilter)
       }
-      
+
       if (userFilter) {
         filtered = filtered.filter(t => t.recordedBy?._id === userFilter)
       }
-      
+
       if (dateFilter !== 'all') {
         const now = new Date()
         const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
         const weekStart = new Date(todayStart)
         weekStart.setDate(weekStart.getDate() - 7)
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-        
+
         filtered = filtered.filter((t: Transaction) => {
           const txnDate = new Date(t.createdAt)
           if (dateFilter === 'today') return txnDate >= todayStart
@@ -128,14 +134,14 @@ export default function TransactionsPage() {
           return true
         })
       }
-      
+
       // Sort by updatedAt (or createdAt) to show most recently updated first
       filtered.sort((a, b) => {
         const aDate = new Date(a.updatedAt || a.createdAt).getTime()
         const bDate = new Date(b.updatedAt || b.createdAt).getTime()
         return bDate - aDate // Descending order (newest first)
       })
-      
+
       // Extract unique users for filter
       const users = new Map<string, { _id: string; name: string; email: string }>()
       filtered.forEach((t: any) => {
@@ -148,11 +154,11 @@ export default function TransactionsPage() {
         }
       })
       setAvailableUsers(Array.from(users.values()))
-      
+
       // Paginate the filtered results
       const start = (page - 1) * pageSize
       const paginated = filtered.slice(start, start + pageSize)
-      
+
       return {
         data: paginated,
         total: filtered.length,
@@ -176,8 +182,13 @@ export default function TransactionsPage() {
   const totalAmount = useMemo(() => {
     if (!data || data.length === 0) return 0
     return data.reduce((sum: number, txn: Transaction) => {
-      return sum + (txn.paidAmount || txn.amount || 0)
+      const amount = (txn.paidAmount || txn.amount || 0)
+      if (txn.paymentType === 'refund') {
+        return sum - amount
+      }
+      return sum + amount
     }, 0)
+
   }, [data])
 
   // Get selected user name
@@ -190,14 +201,14 @@ export default function TransactionsPage() {
   useEffect(() => {
     if (!isAdmin) return
     const socket = getSocket()
-    
+
     const handlePaymentUpdate = () => {
       // Invalidate and refetch transactions
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
     }
-    
+
     socket.on('payment-update', handlePaymentUpdate)
-    
+
     return () => {
       socket.off('payment-update', handlePaymentUpdate)
     }
@@ -416,24 +427,25 @@ export default function TransactionsPage() {
                                 {txn.studentName || txn.admissionStudentName || 'Unknown'}
                               </p>
                             </Link>
-                        <p className="text-sm text-secondary">
-                          {txn.type === 'residential'
-                            ? `Room Payment${txn.billingMonth ? ` - ${txn.billingMonth}` : ''}`
-                            : `Coaching - ${txn.course || 'N/A'}`}
-                        </p>
-                        {txn.recordedBy && (
-                          <p className="text-xs text-secondary mt-1">
-                            Recorded by: <span className="font-medium">{txn.recordedBy.name}</span>
-                            {txn.recordedBy.email && ` (${txn.recordedBy.email})`}
-                          </p>
-                        )}
+                            <p className="text-sm text-secondary">
+                              {txn.type === 'residential'
+                                ? `Room Payment${txn.billingMonth ? ` - ${txn.billingMonth}` : ''}`
+                                : `Coaching - ${txn.course || 'N/A'}`}
+                            </p>
+                            {txn.recordedBy && (
+                              <p className="text-xs text-secondary mt-1">
+                                Recorded by: <span className="font-medium">{txn.recordedBy.name}</span>
+                                {txn.recordedBy.email && ` (${txn.recordedBy.email})`}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className="font-bold text-lg">
-                          {maskCurrency(txn.paidAmount || txn.amount || 0, false)}
+                        <p className={cn("font-bold text-lg", txn.paymentType === 'refund' && "text-danger")}>
+                          {txn.paymentType === 'refund' && '-'} {maskCurrency(txn.paidAmount || txn.amount || 0, false)}
                         </p>
+
                         <p className="text-sm text-secondary">
                           {txn.paymentMethod}
                         </p>

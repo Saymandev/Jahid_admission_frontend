@@ -1115,10 +1115,11 @@ export default function StudentDetailPage() {
                             </div>
                             <div className="text-xs text-secondary mt-1 space-y-0.5">
                               {payment.type && payment.type !== 'rent' ? (
-                                <div>
-                                  <span className="capitalize font-medium text-primary">{payment.type.replace('_', ' ')}: </span>
-                                  {maskCurrency(payment.paidAmount, user?.role === 'staff')}
+                                <div className={cn(payment.type === 'refund' && "text-danger")}>
+                                  <span className="capitalize font-medium">{payment.type.replace('_', ' ')}: </span>
+                                  {payment.type === 'refund' && '-'} {maskCurrency(payment.paidAmount, user?.role === 'staff')}
                                 </div>
+
                               ) : (
                                 <>
                                   <div>
