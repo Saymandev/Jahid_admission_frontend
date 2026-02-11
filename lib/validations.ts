@@ -33,7 +33,9 @@ export const studentSchema = z.object({
   monthlyRent: z.string().optional(),
   securityDeposit: z.string().optional(),
   unionFee: z.string().optional(),
+  initialRentPaid: z.string().optional(),
 })
+
 
 // Payment validation
 export const paymentSchema = z.object({

@@ -30,7 +30,6 @@ const createRoomSchema = z.object({
     return !isNaN(num) && num >= 0
   }, 'Monthly rent must be a valid number'),
 })
-// hello
 interface Bed {
   name: string
   price: number
@@ -59,7 +58,9 @@ type RentFormData = {
   monthlyRent?: string
   securityDeposit?: string
   unionFee?: string
+  initialRentPaid?: string
 }
+
 
 export default function RoomsPage() {
   const user = useAuthStore((state) => state.user)
@@ -112,7 +113,7 @@ export default function RoomsPage() {
       params.append('page', page.toString())
       params.append('limit', pageSize.toString())
       if (searchQuery) params.append('search', searchQuery)
-      
+
       const response = await api.get(`/residential/rooms?${params.toString()}`)
       return response.data
     },
@@ -159,7 +160,7 @@ export default function RoomsPage() {
   const onSubmit = (data: RoomFormData) => {
     const rentPerBed = parseFloat(data.monthlyRentPerBed)
     const totalBedsCount = parseInt(data.totalBeds)
-    
+
     // Auto-generate beds
     const beds = Array.from({ length: totalBedsCount }, (_, index) => ({
       name: `Bed ${index + 1}`,
@@ -189,8 +190,10 @@ export default function RoomsPage() {
       monthlyRent: data.monthlyRent ? parseFloat(data.monthlyRent) : undefined,
       securityDeposit: data.securityDeposit ? parseFloat(data.securityDeposit) : undefined,
       unionFee: data.unionFee ? parseFloat(data.unionFee) : undefined,
+      initialRentPaid: data.initialRentPaid ? parseFloat(data.initialRentPaid) : undefined,
     })
   }
+
 
   const handleRentBed = (roomId: string, bedName: string, bedPrice: number) => {
     setSelectedBed({ roomId, bedName, bedPrice })
@@ -217,7 +220,7 @@ export default function RoomsPage() {
             )}
           </div>
           {isAdmin && (
-            <Button 
+            <Button
               onClick={() => setShowForm(!showForm)}
               className="h-10 px-6 font-semibold"
             >
@@ -312,8 +315,8 @@ export default function RoomsPage() {
                 </div>
 
                 <div className="flex gap-3 pt-4">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createMutation.isPending}
                     className="flex-1 h-11 font-semibold"
                   >
@@ -419,6 +422,17 @@ export default function RoomsPage() {
                       <p className="text-xs text-secondary">Default: {maskCurrency(selectedBed.bedPrice, false)}</p>
                     </div>
                     <div className="space-y-2">
+                      <Label htmlFor="rent-initialRentPaid">Initial Rent Paid (BDT)</Label>
+                      <Input
+                        id="rent-initialRentPaid"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Current payment"
+                        {...registerRent('initialRentPaid')}
+                      />
+                    </div>
+                    <div className="space-y-2">
                       <Label htmlFor="rent-securityDeposit">Security Deposit (BDT)</Label>
                       <Input
                         id="rent-securityDeposit"
@@ -429,20 +443,21 @@ export default function RoomsPage() {
                       />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="rent-unionFee">Union Fee (BDT)</Label>
-                        <Input
-                          id="rent-unionFee"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          placeholder="One-time non-refundable fee"
-                          {...registerRent('unionFee')}
-                        />
-                      </div>
+                      <Label htmlFor="rent-unionFee">Union Fee (BDT)</Label>
+                      <Input
+                        id="rent-unionFee"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="One-time fee"
+                        {...registerRent('unionFee')}
+                      />
+                    </div>
                   </div>
+
                   <div className="flex gap-3 pt-4">
-                    <Button 
-                      type="submit" 
+                    <Button
+                      type="submit"
                       disabled={rentMutation.isPending}
                       className="flex-1 h-11 font-semibold"
                     >
@@ -550,7 +565,7 @@ export default function RoomsPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-1">
                     <span className="text-xs text-secondary flex items-center gap-1">
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -562,7 +577,7 @@ export default function RoomsPage() {
                       {maskCurrency(room.monthlyRentPerBed, user?.role === 'staff')}
                     </p>
                   </div>
-                  
+
                   {/* Beds List */}
                   {room.beds && room.beds.length > 0 ? (
                     <div className="space-y-2 pt-3 border-t">

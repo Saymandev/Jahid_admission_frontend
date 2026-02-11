@@ -42,7 +42,9 @@ type StudentFormData = {
   monthlyRent?: string
   securityDeposit?: string
   unionFee?: string
+  initialRentPaid?: string
 }
+
 
 export default function StudentsPage() {
   const router = useRouter()
@@ -97,7 +99,7 @@ export default function StudentsPage() {
 
   const selectedRoomId = watch('roomId')
   const selectedBedName = watch('bedNumber')
-  
+
   // Find selected room and available beds
   const selectedRoom = useMemo(() => {
     return rooms?.find((r: any) => r._id === selectedRoomId)
@@ -118,13 +120,13 @@ export default function StudentsPage() {
   // Search for existing student when phone or name is entered
   const phoneValue = watch('phone')
   const nameValue = watch('name')
-  
+
   useEffect(() => {
     const searchForStudent = async () => {
       // Only search if we have at least 3 characters in phone or name
       const phoneLength = phoneValue?.trim().length || 0
       const nameLength = nameValue?.trim().length || 0
-      
+
       if (phoneLength < 3 && nameLength < 3) {
         setFoundStudent(null)
         return
@@ -191,7 +193,7 @@ export default function StudentsPage() {
       params.append('page', page.toString())
       params.append('limit', pageSize.toString())
       if (searchQuery) params.append('search', searchQuery)
-      
+
       const response = await api.get(`/residential/students?${params.toString()}`)
       return response.data
     },
@@ -225,7 +227,7 @@ export default function StudentsPage() {
     // Check if bedNumber is a bed name (string) or bed number (number)
     const bedName = selectedRoom?.beds?.find((b: any) => b.name === data.bedNumber) ? data.bedNumber : undefined
     const bedNumber = bedName ? undefined : parseInt(data.bedNumber)
-    
+
     createMutation.mutate({
       ...data,
       bedNumber: bedNumber,
@@ -233,8 +235,10 @@ export default function StudentsPage() {
       monthlyRent: data.monthlyRent ? parseFloat(data.monthlyRent) : undefined,
       securityDeposit: data.securityDeposit ? parseFloat(data.securityDeposit) : undefined,
       unionFee: data.unionFee ? parseFloat(data.unionFee) : undefined,
+      initialRentPaid: data.initialRentPaid ? parseFloat(data.initialRentPaid) : undefined,
     })
   }
+
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
@@ -513,10 +517,21 @@ export default function StudentsPage() {
                       {...register('unionFee')}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="initialRentPaid">Initial Rent Paid (BDT)</Label>
+                    <Input
+                      id="initialRentPaid"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder="Amount paid today for rent"
+                      {...register('initialRentPaid')}
+                    />
+                  </div>
                 </div>
                 <div className="flex gap-3 pt-4">
-                  <Button 
-                    type="submit" 
+                  <Button
+                    type="submit"
                     disabled={createMutation.isPending}
                     className="flex-1 h-11 font-semibold"
                   >
