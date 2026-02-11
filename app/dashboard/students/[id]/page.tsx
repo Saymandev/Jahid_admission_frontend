@@ -1137,9 +1137,32 @@ export default function StudentDetailPage() {
                                       Due: {maskCurrency(payment.dueAmount, user?.role === 'staff')}
                                     </div>
                                   )}
+
+                                  {/* Individual Transactions Breakdown */}
+                                  {payment.records && payment.records.length > 1 && (
+                                    <div className="mt-3 pt-2 border-t border-secondary/10 bg-black/5 p-2 rounded">
+                                      <p className="text-[10px] font-bold text-secondary uppercase tracking-tight mb-1">
+                                        Individual Transactions
+                                      </p>
+                                      {payment.records.map((rec: any, idx: number) => (
+                                        <div key={rec._id || idx} className="flex justify-between items-center text-[11px] py-1 border-b border-black/5 last:border-0 hover:bg-black/5 transition-colors px-1">
+                                          <div className="flex flex-col">
+                                            <span className="font-medium">
+                                              {new Date(rec.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                            </span>
+                                            <span className="text-[9px] opacity-70 capitalize">{rec.paymentMethod}</span>
+                                          </div>
+                                          <span className="font-semibold text-primary">
+                                            {maskCurrency(rec.paidAmount, user?.role === 'staff')}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </>
                               )}
                             </div>
+
 
 
                           </div>
