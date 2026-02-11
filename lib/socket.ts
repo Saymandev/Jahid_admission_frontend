@@ -6,7 +6,6 @@ export const getSocket = (): Socket => {
   if (!socket) {
     const token = localStorage.getItem('accessToken')
     socket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001', {
-      path: '/api/socket.io',
       auth: {
         token,
       },
