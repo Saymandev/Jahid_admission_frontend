@@ -162,10 +162,9 @@ export default function TransactionsPage() {
 
       // Calculate total amount for all filtered results (not just current page)
       const filteredTotalAmount = filtered.reduce((sum: number, txn: any) => {
-        if (txn.paymentMethod === 'adjustment') {
-          return sum
-        }
         const amount = (txn.paidAmount || txn.amount || 0)
+        // Adjustments from security deposit count as "payment" received (from security balance)
+        // Refunds count as money out.
         if (txn.paymentType === 'refund' || txn.type === 'refund') {
           return sum - amount
         }
@@ -418,7 +417,12 @@ export default function TransactionsPage() {
                   {data.map((txn: Transaction) => (
                     <div
                       key={txn._id}
-                      className="flex items-center justify-between p-4 border rounded-lg hover:bg-primary/5 transition-colors"
+                      className={cn(
+                        "flex items-center justify-between p-4 border rounded-lg transition-colors",
+                        txn.paymentType === 'refund' ? "bg-danger/5 border-danger/20 hover:bg-danger/10" :
+                        txn.paymentType === 'adjustment' ? "bg-primary/5 border-primary/20 hover:bg-primary/10" :
+                        "hover:bg-accent/50"
+                      )}
                     >
                       <div className="flex-1">
                         <div className="flex items-center gap-3">
@@ -433,7 +437,11 @@ export default function TransactionsPage() {
                             </Link>
                             <p className="text-sm text-secondary">
                               {txn.type === 'residential'
-                                ? `Room Payment${txn.billingMonth ? ` - ${txn.billingMonth}` : ''}`
+                                ? txn.paymentType === 'refund'
+                                  ? 'Security Deposit Return'
+                                  : txn.paymentType === 'adjustment'
+                                    ? 'Security Applied to Due'
+                                    : `Room Payment${txn.billingMonth ? ` - ${txn.billingMonth}` : ''}`
                                 : `Coaching - ${txn.course || 'N/A'}`}
                             </p>
                             {txn.recordedBy && (

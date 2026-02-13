@@ -1109,6 +1109,48 @@ export default function StudentDetailPage() {
                   onMonthSelect={handleMonthSelect}
                 />
 
+                {/* Fees & Extra Transactions */}
+                {dueStatus.extraPayments && dueStatus.extraPayments.length > 0 && (
+                  <div className="mt-6 space-y-4">
+                    <h4 className="font-semibold text-sm mb-3">Fees & Extra Transactions</h4>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {dueStatus.extraPayments.map((p: any) => (
+                        <div
+                          key={p._id}
+                          className={cn(
+                            'p-3 border rounded-lg',
+                            p.type === 'refund' ? 'bg-danger/5 border-danger/30' : 'bg-primary/5 border-primary/30'
+                          )}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                               <div className="flex items-center gap-2">
+                                <span className="font-semibold text-sm capitalize">
+                                  {p.type?.replace('_', ' ') || 'Other Fee'}
+                                </span>
+                                {p.paymentMethod && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-black/5 text-secondary uppercase font-bold">
+                                    {p.paymentMethod}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-xs text-secondary mt-1">
+                                Date: {new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </div>
+                              {p.notes && <div className="text-[11px] italic text-secondary mt-1">{p.notes}</div>}
+                            </div>
+                            <div className="text-right">
+                              <span className={cn("font-bold", p.type === 'refund' ? "text-danger" : "text-primary")}>
+                                {p.type === 'refund' ? '-' : '+'} {maskCurrency(p.paidAmount, user?.role === 'staff')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Payment List View */}
                 <div className="mt-6 space-y-2">
                   <h4 className="font-semibold text-sm mb-3">Monthly Payment Summary</h4>
