@@ -45,7 +45,7 @@ export const paymentSchema = z.object({
     const num = parseFloat(val)
     return !isNaN(num) && num > 0
   }, 'Paid amount must be a positive number'),
-  paymentMethod: z.enum(['cash', 'bkash', 'bank']),
+  paymentMethod: z.enum(['cash', 'bkash', 'bank', 'adjustment']),
   transactionId: z.string().optional(),
   notes: z.string().optional(),
   isAdvance: z.boolean().optional(),
@@ -83,7 +83,7 @@ export const admissionPaymentSchema = z.object({
     const num = parseFloat(val)
     return !isNaN(num) && num > 0
   }, 'Paid amount must be a positive number'),
-  paymentMethod: z.enum(['cash', 'bkash', 'bank']),
+  paymentMethod: z.enum(['cash', 'bkash', 'bank', 'adjustment']),
   transactionId: z.string().optional(),
   notes: z.string().optional(),
 })
