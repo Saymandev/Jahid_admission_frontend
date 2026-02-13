@@ -37,21 +37,47 @@ export const studentSchema = z.object({
 })
 
 
-// Payment validation
-export const paymentSchema = z.object({
-  type: z.enum(['rent', 'security', 'union_fee', 'other']).default('rent'),
-  billingMonth: z.string().regex(/^\d{4}-\d{2}$/, 'Billing month must be in YYYY-MM format').optional(),
-  paidAmount: z.string().refine((val) => {
-    const num = parseFloat(val)
-    return !isNaN(num) && num > 0
-  }, 'Paid amount must be a positive number'),
+// Bulk Payment validation
+export const bulkPaymentSchema = z.object({
   paymentMethod: z.enum(['cash', 'bkash', 'bank', 'adjustment']),
   transactionId: z.string().optional(),
   notes: z.string().optional(),
-  isAdvance: z.boolean().optional(),
+  rentAmount: z.string().refine((val) => {
+    if (!val) return true
+    const num = parseFloat(val)
+    return !isNaN(num) && num >= 0
+  }, 'Rent amount must be a non-negative number').optional(),
+  billingMonth: z.string().regex(/^\d{4}-\d{2}$/, 'Billing month must be in YYYY-MM format').optional(),
+  isAdvance: z.boolean().optional().default(false),
+  securityAmount: z.string().refine((val) => {
+    if (!val) return true
+    const num = parseFloat(val)
+    return !isNaN(num) && num >= 0
+  }, 'Security amount must be a non-negative number').optional(),
+  unionFeeAmount: z.string().refine((val) => {
+    if (!val) return true
+    const num = parseFloat(val)
+    return !isNaN(num) && num >= 0
+  }, 'Union fee amount must be a non-negative number').optional(),
+  otherAmount: z.string().refine((val) => {
+    if (!val) return true
+    const num = parseFloat(val)
+    return !isNaN(num) && num >= 0
+  }, 'Other amount must be a non-negative number').optional(),
 }).refine((data) => {
-  // If type is rent and not advance, billing month is required
-  if (data.type === 'rent' && !data.isAdvance && !data.billingMonth) {
+  // At least one amount must be provided
+  const rent = parseFloat(data.rentAmount || '0')
+  const security = parseFloat(data.securityAmount || '0')
+  const union = parseFloat(data.unionFeeAmount || '0')
+  const other = parseFloat(data.otherAmount || '0')
+  return rent > 0 || security > 0 || union > 0 || other > 0
+}, {
+  message: 'At least one payment amount must be greater than 0',
+  path: ['rentAmount'],
+}).refine((data) => {
+  // If rentAmount is provided and not advance, billing month is required
+  const rent = parseFloat(data.rentAmount || '0')
+  if (rent > 0 && !data.isAdvance && !data.billingMonth) {
     return false
   }
   return true

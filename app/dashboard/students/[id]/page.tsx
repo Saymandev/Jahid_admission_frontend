@@ -13,7 +13,7 @@ import { maskCurrency, maskValue } from '@/lib/mask-value'
 import { exportCheckoutStatement, exportStudentLedger } from '@/lib/pdf-export'
 import { showToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
-import { paymentSchema } from '@/lib/validations'
+import { bulkPaymentSchema } from '@/lib/validations'
 import { useAuthStore } from '@/store/auth-store'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -22,9 +22,11 @@ import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 
 type PaymentFormData = {
-  type: 'rent' | 'security' | 'union_fee' | 'other'
-  billingMonth: string
-  paidAmount: string
+  rentAmount?: string
+  securityAmount?: string
+  unionFeeAmount?: string
+  otherAmount?: string
+  billingMonth?: string
   paymentMethod: 'cash' | 'bkash' | 'bank'
   transactionId?: string
   notes?: string
@@ -61,11 +63,11 @@ export default function StudentDetailPage() {
     watch,
     setValue,
   } = useForm<PaymentFormData>({
-    resolver: zodResolver(paymentSchema),
+    resolver: zodResolver(bulkPaymentSchema),
     defaultValues: {
-      type: 'rent',
       billingMonth: new Date().toISOString().slice(0, 7),
       paymentMethod: 'cash',
+      isAdvance: false,
     },
   })
 
@@ -123,10 +125,7 @@ export default function StudentDetailPage() {
 
   const paymentMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await api.post('/residential/payments', {
-        ...data,
-        studentId,
-      })
+      const response = await api.post('/residential/payments/bulk', data)
       return response.data
     },
     onSuccess: () => {
@@ -187,20 +186,22 @@ export default function StudentDetailPage() {
   const onPaymentSubmit = (data: PaymentFormData) => {
     paymentMutation.mutate({
       studentId,
-      type: data.type,
-      billingMonth: data.type === 'rent' && !data.isAdvance ? data.billingMonth : undefined,
-      paidAmount: parseFloat(data.paidAmount),
+      rentAmount: data.rentAmount ? parseFloat(data.rentAmount) : 0,
+      securityAmount: data.securityAmount ? parseFloat(data.securityAmount) : 0,
+      unionFeeAmount: data.unionFeeAmount ? parseFloat(data.unionFeeAmount) : 0,
+      otherAmount: data.otherAmount ? parseFloat(data.otherAmount) : 0,
+      billingMonth: data.rentAmount && parseFloat(data.rentAmount) > 0 && !data.isAdvance ? data.billingMonth : undefined,
       paymentMethod: data.paymentMethod,
       transactionId: data.transactionId,
       notes: data.notes,
-      isAdvance: data.type === 'rent' ? data.isAdvance : false,
+      isAdvance: data.isAdvance,
     })
   }
 
 
   const handleExportLedger = () => {
     if (student && dueStatus) {
-      exportStudentLedger(student, dueStatus.payments)
+      exportStudentLedger(student, dueStatus.payments, dueStatus.extraPayments || [])
       showToast('Student ledger exported successfully!', 'success')
     }
   }
@@ -288,6 +289,12 @@ export default function StudentDetailPage() {
                 <span className="text-secondary">Security Deposit: </span>
                 <span className="font-semibold text-primary">
                   {maskCurrency(student.securityDeposit || 0, user?.role === 'staff')}
+                </span>
+              </div>
+              <div className="text-sm">
+                <span className="text-secondary">Union Fee: </span>
+                <span className="font-semibold text-primary">
+                  {maskCurrency(student.unionFee || 0, user?.role === 'staff')}
                 </span>
               </div>
               <div className="text-sm">
@@ -969,30 +976,52 @@ export default function StudentDetailPage() {
                 <form onSubmit={handleSubmit(onPaymentSubmit)} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="type">Payment Type *</Label>
-                      <Select id="type" {...register('type')}>
-                        <option value="rent">Rent Payment</option>
-                        <option value="security">Security Deposit</option>
-                        <option value="union_fee">Union Fee</option>
-                        <option value="other">Other Fee</option>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="paidAmount">Amount (BDT) *</Label>
+                      <Label htmlFor="rentAmount">Rent Amount (BDT)</Label>
                       <Input
-                        id="paidAmount"
+                        id="rentAmount"
                         type="number"
                         min="0"
                         step="0.01"
-                        {...register('paidAmount')}
+                        placeholder="Enter rent amount"
+                        {...register('rentAmount')}
                       />
-                      {errors.paidAmount && (
-                        <p className="text-sm text-danger">{errors.paidAmount.message}</p>
-                      )}
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="securityAmount">Security Deposit (BDT)</Label>
+                      <Input
+                        id="securityAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Enter security deposit"
+                        {...register('securityAmount')}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="unionFeeAmount">Union Fee (BDT)</Label>
+                      <Input
+                        id="unionFeeAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Enter union fee"
+                        {...register('unionFeeAmount')}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="otherAmount">Other Fee (BDT)</Label>
+                      <Input
+                        id="otherAmount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        placeholder="Enter other fees"
+                        {...register('otherAmount')}
+                      />
                     </div>
                   </div>
 
-                  {watch('type') === 'rent' && (
+                  <div className="pt-2">
                     <div className="flex items-center gap-2 mb-4 p-3 bg-primary/5 rounded-md">
                       <input
                         type="checkbox"
@@ -1001,16 +1030,14 @@ export default function StudentDetailPage() {
                         className="w-4 h-4"
                       />
                       <Label htmlFor="isAdvance" className="cursor-pointer font-medium">
-                        Record as Advance Payment (for future months)
+                        Record Rent as Advance Payment (for future months)
                       </Label>
                     </div>
-                  )}
 
-                  <div className="grid grid-cols-2 gap-4">
-                    {watch('type') === 'rent' && (
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="billingMonth">
-                          {watch('isAdvance') ? 'Reference Month (Optional)' : 'Billing Month *'}
+                          {watch('isAdvance') ? 'Reference Month (Optional)' : 'Billing Month (for Rent) *'}
                         </Label>
                         <Input
                           id="billingMonth"
@@ -1021,48 +1048,53 @@ export default function StudentDetailPage() {
                         />
                         {watch('isAdvance') && (
                           <p className="text-xs text-secondary">
-                            Advance payments will be applied to future months automatically
+                            Advance rent will be applied to future months automatically
                           </p>
                         )}
                         {errors.billingMonth && (
                           <p className="text-sm text-danger">{errors.billingMonth.message}</p>
                         )}
+                        {errors.rentAmount && (
+                          <p className="text-sm text-danger">{errors.rentAmount.message}</p>
+                        )}
                       </div>
-                    )}
-                    <div className="space-y-2">
-                      <Label htmlFor="paymentMethod">Payment Method *</Label>
-                      <Select
-                        id="paymentMethod"
-                        {...register('paymentMethod')}
-                      >
-                        <option value="cash">Cash</option>
-                        <option value="bkash">Bkash</option>
-                        <option value="bank">Bank</option>
-                      </Select>
-                      {errors.paymentMethod && (
-                        <p className="text-sm text-danger">{errors.paymentMethod.message}</p>
-                      )}
+                      <div className="space-y-2">
+                        <Label htmlFor="paymentMethod">Payment Method *</Label>
+                        <Select
+                          id="paymentMethod"
+                          {...register('paymentMethod')}
+                        >
+                          <option value="cash">Cash</option>
+                          <option value="bkash">Bkash</option>
+                          <option value="bank">Bank</option>
+                        </Select>
+                        {errors.paymentMethod && (
+                          <p className="text-sm text-danger">{errors.paymentMethod.message}</p>
+                        )}
+                      </div>
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="transactionId">Transaction ID</Label>
-                      <Input
-                        id="transactionId"
-                        {...register('transactionId')}
-                      />
+
+                    <div className="grid grid-cols-2 gap-4 mt-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="transactionId">Transaction ID</Label>
+                        <Input
+                          id="transactionId"
+                          {...register('transactionId')}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="notes">Notes</Label>
+                        <Input
+                          id="notes"
+                          {...register('notes')}
+                        />
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Input
-                      id="notes"
-                      {...register('notes')}
-                    />
-                  </div>
-                  <Button type="submit" disabled={paymentMutation.isPending}>
+                  <Button type="submit" className="mt-4" disabled={paymentMutation.isPending}>
                     {paymentMutation.isPending ? 'Processing...' : 'Record Payment'}
                   </Button>
                 </form>
-
               </div>
             )}
 

@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { QuickPaymentModal } from '@/components/quick-payment-modal'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { MobileMenu } from '@/components/ui/mobile-menu'
+import { NotificationBell } from '@/components/ui/notification-bell'
+import { Sidebar } from '@/components/ui/sidebar'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { MobileMenu } from '@/components/ui/mobile-menu'
-import { Sidebar } from '@/components/ui/sidebar'
-import { Input } from '@/components/ui/input'
-import { NotificationBell } from '@/components/ui/notification-bell'
+import { useState } from 'react'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -19,6 +20,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [isQuickRentOpen, setIsQuickRentOpen] = useState(false)
 
   const handleLogout = () => {
     logout()
@@ -107,6 +109,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   className="w-32"
                 />
               </form>
+               <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsQuickRentOpen(true)}
+                title="Quick Rent"
+              >
+                ⚡
+              </Button>
               <NotificationBell />
               <div className="hidden sm:flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -141,6 +151,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               />
             </form>
             <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsQuickRentOpen(true)}
+                className="flex items-center gap-2"
+              >
+                <span>⚡</span>
+                <span className="hidden xl:inline">Quick Rent</span>
+              </Button>
               <NotificationBell />
               <Button variant="outline" size="sm" onClick={handleLogout}>
                 Logout
@@ -160,6 +179,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <main className={cn('lg:mr-4 lg:mt-4 min-h-[calc(100vh-4rem)] transition-all duration-300', sidebarOpen ? 'lg:ml-[calc(16rem+1rem)]' : 'lg:ml-[calc(4rem+1rem)]')}>
         {children}
       </main>
+
+      <QuickPaymentModal
+        isOpen={isQuickRentOpen}
+        onClose={() => setIsQuickRentOpen(false)}
+      />
     </div>
   )
 }

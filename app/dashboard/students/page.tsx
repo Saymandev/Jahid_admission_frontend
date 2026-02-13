@@ -1,6 +1,7 @@
 'use client'
 
 import { ProtectedRoute } from '@/components/protected-route'
+import { QuickPaymentModal } from '@/components/quick-payment-modal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -60,6 +61,8 @@ export default function StudentsPage() {
   const pageSize = 10
   const [foundStudent, setFoundStudent] = useState<any>(null)
   const [isSearching, setIsSearching] = useState(false)
+  const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<any>(null)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
   // Reset to page 1 when status param changes
   useEffect(() => {
@@ -589,6 +592,16 @@ export default function StudentsPage() {
                     </div>
                     <div className="flex gap-2">
                       <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedStudentForPayment(student)
+                          setIsPaymentModalOpen(true)
+                        }}
+                      >
+                        ⚡ Quick Rent
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => router.push(`/dashboard/students/${student._id}`)}
@@ -664,6 +677,12 @@ export default function StudentsPage() {
             </div>
           </div>
         )}
+        {/* Quick Payment Modal */}
+        <QuickPaymentModal
+          student={selectedStudentForPayment}
+          isOpen={isPaymentModalOpen}
+          onClose={() => setIsPaymentModalOpen(false)}
+        />
       </div>
     </ProtectedRoute>
   )

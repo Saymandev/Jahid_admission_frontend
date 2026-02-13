@@ -8,10 +8,10 @@ import { Select } from '@/components/ui/select'
 import api from '@/lib/api'
 import { maskCurrency } from '@/lib/mask-value'
 import { getSocket } from '@/lib/socket'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 import { useEffect, useMemo, useState } from 'react'
 
 
@@ -56,6 +56,7 @@ export default function TransactionsPage() {
   const { data: transactionsData, isLoading, refetch } = useQuery<{
     data: Transaction[]
     total: number
+    totalAmount: number
     page: number
     limit: number
     totalPages: number
@@ -159,9 +160,22 @@ export default function TransactionsPage() {
       const start = (page - 1) * pageSize
       const paginated = filtered.slice(start, start + pageSize)
 
+      // Calculate total amount for all filtered results (not just current page)
+      const filteredTotalAmount = filtered.reduce((sum: number, txn: any) => {
+        if (txn.paymentMethod === 'adjustment') {
+          return sum
+        }
+        const amount = (txn.paidAmount || txn.amount || 0)
+        if (txn.paymentType === 'refund' || txn.type === 'refund') {
+          return sum - amount
+        }
+        return sum + amount
+      }, 0)
+
       return {
         data: paginated,
         total: filtered.length,
+        totalAmount: filteredTotalAmount,
         page,
         limit: pageSize,
         totalPages: Math.ceil(filtered.length / pageSize),
@@ -178,18 +192,8 @@ export default function TransactionsPage() {
     setPage(1)
   }, [searchQuery, typeFilter, userFilter, dateFilter, startDate, endDate])
 
-  // Calculate total amount for displayed transactions
-  const totalAmount = useMemo(() => {
-    if (!data || data.length === 0) return 0
-    return data.reduce((sum: number, txn: Transaction) => {
-      const amount = (txn.paidAmount || txn.amount || 0)
-      if (txn.paymentType === 'refund') {
-        return sum - amount
-      }
-      return sum + amount
-    }, 0)
-
-  }, [data])
+  // Use total amount from the filtered transactions data
+  const totalAmount = transactionsData?.totalAmount || 0
 
   // Get selected user name
   const selectedUserName = useMemo(() => {

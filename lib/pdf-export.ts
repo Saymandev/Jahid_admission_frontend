@@ -2,7 +2,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 // Student Ledger PDF
-export function exportStudentLedger(student: any, payments: any[]) {
+export function exportStudentLedger(student: any, payments: any[], extraPayments: any[] = []) {
   const doc = new jsPDF()
 
   // Header
@@ -16,7 +16,7 @@ export function exportStudentLedger(student: any, payments: any[]) {
   doc.text(`Room: ${student.roomId?.name || 'N/A'} ${student.bedNumber ? `(Bed ${student.bedNumber})` : ''}`, 14, 42)
   doc.text(`Monthly Rent: ${(student.monthlyRent || 0).toLocaleString()} BDT`, 14, 48)
 
-  // Payment Table
+  // Payment Table (Rent & Advance)
   const tableData = payments.map((p: any) => [
     p.month,
     p.rentAmount.toLocaleString(),
@@ -30,18 +30,56 @@ export function exportStudentLedger(student: any, payments: any[]) {
     head: [['Month', 'Rent', 'Paid', 'Due', 'Advance', 'Status']],
     body: tableData,
     startY: 55,
+    theme: 'striped',
+    headStyles: { fillColor: [41, 128, 185] }
   })
+
+  let finalY = (doc as any).lastAutoTable?.finalY || 55
+
+  // Extra Payments Table (Security, Union Fees, etc.)
+  if (extraPayments && extraPayments.length > 0) {
+    doc.setFontSize(14)
+    doc.text('Other Payments (Security, Fees, etc.)', 14, finalY + 15)
+    
+    const extraTableData = extraPayments.map((p: any) => [
+      new Date(p.createdAt).toLocaleDateString(),
+      p.type.charAt(0).toUpperCase() + p.type.slice(1).replace('_', ' '),
+      p.paidAmount.toLocaleString(),
+      p.paymentMethod.toUpperCase(),
+      p.notes || '-',
+    ])
+
+    autoTable(doc, {
+      head: [['Date', 'Type', 'Amount', 'Method', 'Notes']],
+      body: extraTableData,
+      startY: finalY + 20,
+      theme: 'grid',
+      headStyles: { fillColor: [46, 204, 113] }
+    })
+    
+    finalY = (doc as any).lastAutoTable?.finalY || finalY + 20
+  }
 
   // Summary
   const totalRent = payments.reduce((sum, p) => sum + p.rentAmount, 0)
-  const totalPaid = payments.reduce((sum, p) => sum + p.paidAmount, 0)
+  const totalPaidRent = payments.reduce((sum, p) => sum + p.paidAmount, 0)
+  const totalExtra = extraPayments.reduce((sum, p) => sum + p.paidAmount, 0)
   const totalDue = payments.reduce((sum, p) => sum + p.dueAmount, 0)
 
-  const finalY = (doc as any).lastAutoTable?.finalY || 55
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Financial Summary', 14, finalY + 15)
+  
   doc.setFontSize(10)
-  doc.text(`Total Rent: ${totalRent.toLocaleString()} BDT`, 14, finalY + 10)
-  doc.text(`Total Paid: ${totalPaid.toLocaleString()} BDT`, 14, finalY + 16)
-  doc.text(`Total Due: ${totalDue.toLocaleString()} BDT`, 14, finalY + 22)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`Total Rent Invoiced: ${totalRent.toLocaleString()} BDT`, 14, finalY + 22)
+  doc.text(`Total Rent Paid: ${totalPaidRent.toLocaleString()} BDT`, 14, finalY + 28)
+  doc.text(`Total Other Fees/Security: ${totalExtra.toLocaleString()} BDT`, 14, finalY + 34)
+  
+  doc.setFont('helvetica', 'bold')
+  doc.text(`TOTAL PAID: ${(totalPaidRent + totalExtra).toLocaleString()} BDT`, 14, finalY + 42)
+  doc.setTextColor(231, 76, 60) // Red
+  doc.text(`TOTAL OUTSTANDING DUE: ${totalDue.toLocaleString()} BDT`, 14, finalY + 48)
 
   doc.save(`student-ledger-${student.studentId}.pdf`)
 }
