@@ -2,7 +2,7 @@
 
 import { PaymentCalendar } from '@/components/payment-calendar'
 import { ProtectedRoute } from '@/components/protected-route'
-import { ReturnSecurityDepositForm, UseSecurityDepositForm } from '@/components/security-deposit-forms'
+import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -42,7 +42,6 @@ export default function StudentDetailPage() {
   const studentId = params.id as string
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [showUseSecurityDeposit, setShowUseSecurityDeposit] = useState(false)
-  const [showReturnSecurityDeposit, setShowReturnSecurityDeposit] = useState(false)
   const [useSecurityDepositForCheckout, setUseSecurityDepositForCheckout] = useState(false)
   const [showAdvanceApplications, setShowAdvanceApplications] = useState(false)
   const [showReactivateForm, setShowReactivateForm] = useState(false)
@@ -369,13 +368,6 @@ export default function StudentDetailPage() {
                         Use for Dues
                       </Button>
                     )}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowReturnSecurityDeposit(true)}
-                    >
-                      Return Deposit
-                    </Button>
                   </div>
                 )}
                 {student.status === 'left' && student.securityDeposit === 0 && (
@@ -414,28 +406,7 @@ export default function StudentDetailPage() {
                             This advance will automatically apply to future months with outstanding dues
                           </p>
                         </div>
-                        <Button
-                          variant="destructive"
-                          size="sm"
-                          onClick={async () => {
-                            if (confirm(`Are you sure you want to delete the advance payment of ${maskCurrency(dueStatus.totalAdvance, false)}? This action cannot be undone if it has been applied to any months.`)) {
-                              try {
-                                await api.delete(`/residential/students/${studentId}/advance-payment`)
-                                queryClient.invalidateQueries({ queryKey: ['student-due-status', studentId] })
-                                queryClient.invalidateQueries({ queryKey: ['student', studentId] })
-                                showToast('Advance payment deleted successfully!', 'success')
-                              } catch (error: any) {
-                                showToast(error.response?.data?.message || 'Failed to delete advance payment', 'error')
-                              }
-                            }
-                          }}
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                          Delete Advance
-                        </Button>
-                      </div>
+                        </div>
                     </div>
                     {showAdvanceApplications && (
                       <div className="mt-4 pt-4 border-t">
@@ -728,23 +699,7 @@ export default function StudentDetailPage() {
           </Card>
         )}
 
-        {showReturnSecurityDeposit && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Return Security Deposit</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ReturnSecurityDepositForm
-                student={student}
-                onSuccess={() => {
-                  setShowReturnSecurityDeposit(false)
-                  queryClient.invalidateQueries({ queryKey: ['student', studentId] })
-                }}
-                onCancel={() => setShowReturnSecurityDeposit(false)}
-              />
-            </CardContent>
-          </Card>
-        )}
+
 
         {showCheckoutForm && student && (
           <Card className="border-danger/30 bg-danger/5 shadow-lg animate-in fade-in zoom-in duration-300 mb-6">
