@@ -60,11 +60,30 @@ export function exportStudentLedger(student: any, payments: any[], extraPayments
     finalY = (doc as any).lastAutoTable?.finalY || finalY + 20
   }
 
-  // Summary
-  const totalRent = payments.reduce((sum, p) => sum + p.rentAmount, 0)
-  const totalPaidRent = payments.reduce((sum, p) => sum + p.paidAmount, 0)
-  const totalExtra = extraPayments.reduce((sum, p) => sum + p.paidAmount, 0)
-  const totalDue = payments.reduce((sum, p) => sum + p.dueAmount, 0)
+  // Summary: Calculate ONLY cash-in (excluding internal adjustments to avoid double counting)
+  const totalRent = payments.reduce((sum, p) => sum + (p.rentAmount || 0), 0)
+  
+  // Total applied to rent (including adjustments)
+  const totalPaidRent = payments.reduce((sum, p) => sum + (p.paidAmount || 0), 0)
+  // Total applied to others (including security deposit payments)
+  const totalExtra = extraPayments.reduce((sum, p) => sum + (p.paidAmount || 0), 0)
+
+  // Sum only non-adjustment records from monthly payments for the "Cash Received" summary
+  const totalPaidRentCash = payments.reduce((sum, p) => {
+    const monthCash = (p.records || []).reduce((rSum: number, r: any) => {
+      if (r.type === 'adjustment' || r.paymentMethod === 'adjustment' || r.paymentMethod === 'ADJUSTMENT') return rSum;
+      return rSum + (r.paidAmount || 0);
+    }, 0);
+    return sum + monthCash;
+  }, 0);
+
+  // Sum only non-adjustment records from extra payments for the "Cash Received" summary
+  const totalExtraCash = extraPayments.reduce((sum, p) => {
+    if (p.type === 'adjustment' || p.paymentMethod === 'adjustment' || p.paymentMethod === 'ADJUSTMENT') return sum;
+    return sum + (p.paidAmount || 0);
+  }, 0);
+
+  const totalDue = payments.reduce((sum, p) => sum + (p.dueAmount || 0), 0)
 
   doc.setFontSize(12)
   doc.setFont('helvetica', 'bold')
@@ -77,7 +96,9 @@ export function exportStudentLedger(student: any, payments: any[], extraPayments
   doc.text(`Total Other Fees/Security: ${totalExtra.toLocaleString()} BDT`, 14, finalY + 34)
   
   doc.setFont('helvetica', 'bold')
-  doc.text(`TOTAL PAID: ${(totalPaidRent + totalExtra).toLocaleString()} BDT`, 14, finalY + 42)
+  // The Total Paid summary now reflects the ACTUAL cash/online money received
+  doc.text(`TOTAL PAID (Actual Cash): ${(totalPaidRentCash + totalExtraCash).toLocaleString()} BDT`, 14, finalY + 42)
+  
   doc.setTextColor(231, 76, 60) // Red
   doc.text(`TOTAL OUTSTANDING DUE: ${totalDue.toLocaleString()} BDT`, 14, finalY + 48)
 
