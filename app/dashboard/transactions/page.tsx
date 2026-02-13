@@ -324,6 +324,9 @@ export default function TransactionsPage() {
                   <p className="text-3xl font-bold text-primary">
                     {maskCurrency(totalAmount, false)}
                   </p>
+                  <p className="text-[10px] text-secondary mt-1">
+                    (Payments - Refunds). Adjustments excluded.
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -397,6 +400,9 @@ export default function TransactionsPage() {
                       <div className="text-right">
                         <p className={cn("font-bold text-lg", txn.paymentType === 'refund' && "text-danger")}>
                           {txn.paymentType === 'refund' && '-'} {maskCurrency(txn.paidAmount || txn.amount || 0, false)}
+                          {txn.paymentType === 'adjustment' && (
+                            <span className="text-[10px] text-secondary ml-2 font-normal">(Excluded from Total)</span>
+                          )}
                         </p>
 
                         <p className="text-sm text-secondary">
