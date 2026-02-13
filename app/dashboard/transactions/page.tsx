@@ -62,144 +62,85 @@ export default function TransactionsPage() {
     totalPages: number
   }>({
     queryKey: ['transactions', page, searchQuery, typeFilter, userFilter, dateFilter, startDate, endDate],
-    enabled: isAdmin, // Only fetch if admin
-    refetchOnWindowFocus: true, // Refetch when window regains focus (user returns to tab)
-    // Note: We rely on Socket.IO for real-time updates instead of polling
+    enabled: isAdmin,
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const params = new URLSearchParams()
       params.append('page', page.toString())
       params.append('limit', pageSize.toString())
       if (searchQuery) params.append('search', searchQuery)
-
-      const response = await api.get(`/residential/payments?${params.toString()}`)
-      const residentialData = response.data
-
-      // For now, still fetch coaching payments (can be paginated later)
-      const coachingResponse = await api.get('/coaching/payments')
-
-      const residential = residentialData.data.map((p: any) => ({
-        ...p,
-        type: 'residential' as const,
-        paymentType: p.type || 'rent',
-        studentName: p.studentId?.name,
-
-        recordedBy: p.recordedBy,
-        updatedAt: p.updatedAt || p.createdAt,
-      }))
-
-      const coaching = coachingResponse.data.map((p: any) => ({
-        ...p,
-        type: 'coaching' as const,
-        admissionStudentName: p.admissionId?.studentName,
-        course: p.admissionId?.course,
-        recordedBy: p.recordedBy,
-        paidAmount: p.paidAmount,
-        updatedAt: p.updatedAt || p.createdAt,
-      }))
-
-      // Filter by type, user, and date on frontend (since we're combining two sources)
-      let filtered = [...residential, ...coaching]
-
-      if (typeFilter !== 'all') {
-        filtered = filtered.filter(t => t.type === typeFilter)
-      }
-
-      if (userFilter) {
-        filtered = filtered.filter(t => t.recordedBy?._id === userFilter)
-      }
-
+      if (typeFilter !== 'all') params.append('typeFilter', typeFilter)
+      if (userFilter) params.append('userFilter', userFilter)
+      
       if (dateFilter !== 'all') {
-        const now = new Date()
-        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-        const weekStart = new Date(todayStart)
-        weekStart.setDate(weekStart.getDate() - 7)
-        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-
-        filtered = filtered.filter((t: Transaction) => {
-          const txnDate = new Date(t.createdAt)
-          if (dateFilter === 'today') return txnDate >= todayStart
-          if (dateFilter === 'week') return txnDate >= weekStart
-          if (dateFilter === 'month') return txnDate >= monthStart
-          if (dateFilter === 'custom') {
-            if (startDate) {
-              const start = new Date(startDate)
-              start.setHours(0, 0, 0, 0)
-              if (txnDate < start) return false
-            }
-            if (endDate) {
-              const end = new Date(endDate)
-              end.setHours(23, 59, 59, 999)
-              if (txnDate > end) return false
-            }
-          }
-          return true
-        })
+        if (dateFilter === 'custom') {
+            if (startDate) params.append('startDate', startDate)
+            if (endDate) params.append('endDate', endDate)
+        } else {
+            const now = new Date()
+            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+            const weekStart = new Date(todayStart)
+            weekStart.setDate(weekStart.getDate() - 7)
+            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+            
+            if (dateFilter === 'today') params.append('startDate', todayStart.toISOString())
+            if (dateFilter === 'week') params.append('startDate', weekStart.toISOString())
+            if (dateFilter === 'month') params.append('startDate', monthStart.toISOString())
+        }
       }
 
-      // Sort by updatedAt (or createdAt) to show most recently updated first
-      filtered.sort((a, b) => {
-        const aDate = new Date(a.updatedAt || a.createdAt).getTime()
-        const bDate = new Date(b.updatedAt || b.createdAt).getTime()
-        return bDate - aDate // Descending order (newest first)
-      })
+      const response = await api.get(`/residential/transactions?${params.toString()}`)
+      const { data, total, totalAmount, totalPages } = response.data
 
-      // Extract unique users for filter
-      const users = new Map<string, { _id: string; name: string; email: string }>()
-      filtered.forEach((t: any) => {
-        if (t.recordedBy && t.recordedBy._id) {
-          users.set(t.recordedBy._id, {
-            _id: t.recordedBy._id,
-            name: t.recordedBy.name || 'Unknown',
-            email: t.recordedBy.email || '',
-          })
-        }
-      })
-      setAvailableUsers(Array.from(users.values()))
-
-      // Paginate the filtered results
-      const start = (page - 1) * pageSize
-      const paginated = filtered.slice(start, start + pageSize)
-
-      // Calculate total amount for all filtered results (not just current page)
-      const filteredTotalAmount = filtered.reduce((sum: number, txn: any) => {
-        const amount = (txn.paidAmount || txn.amount || 0)
-        // Adjustments from security deposit count as "payment" received (from security balance)
-        // Refunds count as money out.
-        if (txn.paymentType === 'refund' || txn.type === 'refund') {
-          return sum - amount
-        }
-        return sum + amount
-      }, 0)
-
+      // Extract unique users for filter (optional: we could just keep availableUsers state if we have a separate users endpoint)
+      // For now, the backend doesn't return users separately, so we can either keep using current logic or skip it if users are known.
+      // Actually, keep it for now but it only sees current page users. Better to have a separate endpoint for staff.
       return {
-        data: paginated,
-        total: filtered.length,
-        totalAmount: filteredTotalAmount,
+        data: data.map((t: any) => ({
+            ...t,
+            type: t.source || 'residential',
+            paymentType: t.paymentType || 'rent',
+            studentName: t.studentName,
+            admissionStudentName: t.source === 'coaching' ? t.studentName : undefined,
+            recordedBy: t.recordedBy,
+            updatedAt: t.updatedAt || t.createdAt,
+        })),
+        total,
+        totalAmount,
         page,
         limit: pageSize,
-        totalPages: Math.ceil(filtered.length / pageSize),
+        totalPages,
       }
     },
+  })
+
+  // Fetch all users for the filter
+  const { data: usersData } = useQuery({
+    queryKey: ['users'],
+    enabled: isAdmin,
+    queryFn: async () => {
+      const response = await api.get('/users?limit=100')
+      return response.data.data || []
+    }
   })
 
   const data = transactionsData?.data || []
   const totalPages = transactionsData?.totalPages || 0
   const totalTransactions = transactionsData?.total || 0
+  const totalAmount = transactionsData?.totalAmount || 0
 
   // Reset to first page when filters change
   useEffect(() => {
     setPage(1)
   }, [searchQuery, typeFilter, userFilter, dateFilter, startDate, endDate])
 
-  // Use total amount from the filtered transactions data
-  const totalAmount = transactionsData?.totalAmount || 0
-
-  // Get selected user name
+  // Use users from query instead of local state
+  const usersForFilter = usersData || []
   const selectedUserName = useMemo(() => {
     if (!userFilter) return null
-    const user = availableUsers.find(u => u._id === userFilter)
+    const user = usersForFilter.find((u: any) => u._id === userFilter)
     return user?.name || 'Unknown'
-  }, [userFilter, availableUsers])
+  }, [userFilter, usersForFilter])
 
   useEffect(() => {
     if (!isAdmin) return
@@ -325,7 +266,7 @@ export default function TransactionsPage() {
                 }}
               >
                 <option value="">All Users (All Transactions)</option>
-                {availableUsers.map((user) => (
+                {usersForFilter.map((user: any) => (
                   <option key={user._id} value={user._id}>
                     {user.name} ({user.email})
                   </option>
