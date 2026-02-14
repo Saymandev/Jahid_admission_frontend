@@ -1,5 +1,6 @@
 'use client'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProtectedRoute } from '@/components/protected-route'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -76,6 +77,8 @@ export default function CoachingPage() {
   const [showManageBatches, setShowManageBatches] = useState(false)
   const [page, setPage] = useState(1)
   const pageSize = 10
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null)
 
   const {
     register: registerAdmission,
@@ -227,8 +230,12 @@ export default function CoachingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
       queryClient.invalidateQueries({ queryKey: ['coaching-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
       queryClient.invalidateQueries({ queryKey: ['coaching-payments', selectedStudentDetails?._id] })
       showToast('Payment deleted successfully!', 'success')
+      setIsDeleteDialogOpen(false)
+      setPaymentToDelete(null)
     },
     onError: (error: any) => {
       showToast(error.response?.data?.message || 'Failed to delete payment', 'error')
@@ -236,9 +243,8 @@ export default function CoachingPage() {
   })
 
   const handleDeletePayment = (paymentId: string) => {
-    if (window.confirm('Are you sure you want to delete this payment? This will reverse any related balance updates.')) {
-      deletePaymentMutation.mutate(paymentId)
-    }
+    setPaymentToDelete(paymentId)
+    setIsDeleteDialogOpen(true)
   }
   const onAdmissionSubmit = (data: AdmissionFormData) => {
     admissionMutation.mutate({
@@ -1033,6 +1039,16 @@ export default function CoachingPage() {
           </DialogContent>
         </Dialog>
       </div>
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={() => paymentToDelete && deletePaymentMutation.mutate(paymentToDelete)}
+        title="Delete Coaching Payment"
+        description="Are you sure you want to delete this payment? This will reverse the paid/due amounts on the admission record."
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deletePaymentMutation.isPending}
+      />
     </ProtectedRoute>
   )
 }

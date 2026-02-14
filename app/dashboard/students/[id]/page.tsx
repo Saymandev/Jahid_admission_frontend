@@ -1,5 +1,6 @@
 'use client'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { PaymentCalendar } from '@/components/payment-calendar'
 import { ProtectedRoute } from '@/components/protected-route'
 import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
@@ -49,6 +50,8 @@ export default function StudentDetailPage() {
   const [refundAmount, setRefundAmount] = useState(0)
   const [useSecurityForDues, setUseSecurityForDues] = useState(true)
   const [reactivateRoomId, setReactivateRoomId] = useState('')
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null)
 
 
 
@@ -190,7 +193,11 @@ export default function StudentDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['student-due-status', studentId] })
       queryClient.invalidateQueries({ queryKey: ['student', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
       showToast('Payment deleted successfully!', 'success')
+      setIsDeleteDialogOpen(false)
+      setPaymentToDelete(null)
     },
     onError: (error: any) => {
       showToast(error.response?.data?.message || 'Failed to delete payment', 'error')
@@ -198,9 +205,8 @@ export default function StudentDetailPage() {
   })
 
   const handleDeletePayment = (paymentId: string) => {
-    if (window.confirm('Are you sure you want to delete this payment? This will reverse any related balance updates.')) {
-      deleteMutation.mutate(paymentId)
-    }
+    setPaymentToDelete(paymentId)
+    setIsDeleteDialogOpen(true)
   }
 
   const isAdmin = user?.role === 'admin'
@@ -1215,22 +1221,35 @@ export default function StudentDetailPage() {
                                   )}
 
                                   {/* Individual Transactions Breakdown */}
-                                  {payment.records && payment.records.length > 1 && (
+                                  {payment.records && payment.records.length > 0 && (
                                     <div className="mt-3 pt-2 border-t border-secondary/10 bg-black/5 p-2 rounded">
                                       <p className="text-[10px] font-bold text-secondary uppercase tracking-tight mb-1">
                                         Individual Transactions
                                       </p>
                                       {payment.records.map((rec: any, idx: number) => (
-                                        <div key={rec._id || idx} className="flex justify-between items-center text-[11px] py-1 border-b border-black/5 last:border-0 hover:bg-black/5 transition-colors px-1">
+                                        <div key={rec._id || idx} className="flex justify-between items-center text-[11px] py-1 border-b border-black/5 last:border-0 hover:bg-black/5 transition-colors px-1 group">
                                           <div className="flex flex-col">
                                             <span className="font-medium">
                                               {new Date(rec.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                                             </span>
                                             <span className="text-[9px] opacity-70 capitalize">{rec.paymentMethod}</span>
                                           </div>
-                                          <span className="font-semibold text-primary">
-                                            {maskCurrency(rec.paidAmount, user?.role === 'staff')}
-                                          </span>
+                                          <div className="flex items-center gap-2">
+                                            <span className="font-semibold text-primary">
+                                              {maskCurrency(rec.paidAmount, user?.role === 'staff')}
+                                            </span>
+                                            {isAdmin && (
+                                              <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-5 w-5 p-0 text-danger hover:bg-danger/10 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                onClick={() => handleDeletePayment(rec._id)}
+                                                title={`Delete transaction (${maskCurrency(rec.paidAmount, user?.role === 'staff')})`}
+                                              >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                              </Button>
+                                            )}
+                                          </div>
                                         </div>
                                       ))}
                                     </div>
@@ -1264,22 +1283,6 @@ export default function StudentDetailPage() {
                                   : 'Unpaid'}
                             </span>
                             
-                            {isAdmin && payment.records && payment.records.length > 0 && (
-                              <div className="flex gap-1 mt-1">
-                                {payment.records.map((rec: any, idx: number) => (
-                                  <Button
-                                    key={rec._id || idx}
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0 text-danger hover:bg-danger/10"
-                                    onClick={() => handleDeletePayment(rec._id)}
-                                    title={`Delete transaction (${maskCurrency(rec.paidAmount, user?.role === 'staff')})`}
-                                  >
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                                  </Button>
-                                ))}
-                              </div>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -1291,6 +1294,16 @@ export default function StudentDetailPage() {
           </CardContent>
         </Card>
       </div>
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={() => paymentToDelete && deleteMutation.mutate(paymentToDelete)}
+        title="Delete Payment"
+        description="Are you sure you want to delete this payment? This will reverse any related balance updates (security deposit, union fee, etc.) and cancel any automated advances."
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
     </ProtectedRoute>
 
   )

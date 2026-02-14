@@ -1,5 +1,6 @@
 'use client'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProtectedRoute } from '@/components/protected-route'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,9 +9,10 @@ import { Select } from '@/components/ui/select'
 import api from '@/lib/api'
 import { maskCurrency } from '@/lib/mask-value'
 import { getPusher } from '@/lib/pusher'
+import { showToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 
@@ -49,6 +51,9 @@ export default function TransactionsPage() {
   const [endDate, setEndDate] = useState('')
   const [userFilter, setUserFilter] = useState('')
   const [availableUsers, setAvailableUsers] = useState<Array<{ _id: string; name: string; email: string }>>([])
+  
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [txnToDelete, setTxnToDelete] = useState<{ id: string, type: 'residential' | 'coaching' } | null>(null)
 
   const isAdmin = user?.role === 'admin'
   const queryClient = useQueryClient()
@@ -92,9 +97,6 @@ export default function TransactionsPage() {
       const response = await api.get(`/residential/transactions?${params.toString()}`)
       const { data, total, totalAmount, totalPages } = response.data
 
-      // Extract unique users for filter (optional: we could just keep availableUsers state if we have a separate users endpoint)
-      // For now, the backend doesn't return users separately, so we can either keep using current logic or skip it if users are known.
-      // Actually, keep it for now but it only sees current page users. Better to have a separate endpoint for staff.
       return {
         data: data.map((t: any) => ({
             ...t,
@@ -113,6 +115,32 @@ export default function TransactionsPage() {
       }
     },
   })
+
+  const deleteMutation = useMutation({
+    mutationFn: async ({ id, type }: { id: string; type: 'residential' | 'coaching' }) => {
+      const endpoint = type === 'residential' 
+        ? `/residential/payments/${id}` 
+        : `/coaching/admissions/payments/${id}`
+      const response = await api.delete(endpoint)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['coaching-stats'] })
+      showToast('Transaction deleted successfully!', 'success')
+      setIsDeleteDialogOpen(false)
+      setTxnToDelete(null)
+    },
+    onError: (error: any) => {
+      showToast(error.response?.data?.message || 'Failed to delete transaction', 'error')
+    },
+  })
+
+  const handleDelete = (id: string, type: 'residential' | 'coaching') => {
+    setTxnToDelete({ id, type })
+    setIsDeleteDialogOpen(true)
+  }
 
   // Fetch all users for the filter
   const { data: usersData } = useQuery({
@@ -421,11 +449,24 @@ export default function TransactionsPage() {
                           </p>
                         )}
                       </div>
-                      <Link href={`/dashboard/transactions/${txn._id}`}>
-                        <Button variant="outline" size="sm">
-                          View Details →
-                        </Button>
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        {isAdmin && (
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-danger hover:bg-danger/10"
+                            onClick={() => handleDelete(txn._id, txn.type)}
+                            disabled={deleteMutation.isPending}
+                          >
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                          </Button>
+                        )}
+                        <Link href={`/dashboard/transactions/${txn._id}`}>
+                          <Button variant="outline" size="sm">
+                            View Details →
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -460,6 +501,16 @@ export default function TransactionsPage() {
           </CardContent>
         </Card>
       </div>
+      <ConfirmDialog
+        open={isDeleteDialogOpen}
+        onOpenChange={setIsDeleteDialogOpen}
+        onConfirm={() => txnToDelete && deleteMutation.mutate(txnToDelete)}
+        title="Delete Transaction"
+        description="Are you sure you want to delete this transaction? This will reverse any related balance updates and automated applications."
+        confirmText="Delete"
+        variant="danger"
+        isLoading={deleteMutation.isPending}
+      />
     </ProtectedRoute>
   )
 }
