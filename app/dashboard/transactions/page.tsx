@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import api from '@/lib/api'
 import { maskCurrency } from '@/lib/mask-value'
-import { getSocket } from '@/lib/socket'
+import { getPusher } from '@/lib/pusher'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -144,17 +144,21 @@ export default function TransactionsPage() {
 
   useEffect(() => {
     if (!isAdmin) return
-    const socket = getSocket()
+    const pusher = getPusher()
+    if (!pusher) return
+
+    const channel = pusher.subscribe('main-channel')
 
     const handlePaymentUpdate = () => {
       // Invalidate and refetch transactions
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
     }
 
-    socket.on('payment-update', handlePaymentUpdate)
+    channel.bind('payment-update', handlePaymentUpdate)
 
     return () => {
-      socket.off('payment-update', handlePaymentUpdate)
+      channel.unbind('payment-update', handlePaymentUpdate)
+      pusher.unsubscribe('main-channel')
     }
   }, [isAdmin, queryClient])
 

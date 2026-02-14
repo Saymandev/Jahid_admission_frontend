@@ -4,7 +4,7 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import api from '@/lib/api'
 import { maskCurrency, maskValue } from '@/lib/mask-value'
-import { getSocket } from '@/lib/socket'
+import { getPusher } from '@/lib/pusher'
 import { useAuthStore } from '@/store/auth-store'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
@@ -47,24 +47,25 @@ export default function DashboardPage() {
   }, [data])
 
   useEffect(() => {
-    const socket = getSocket()
+    const pusher = getPusher()
+    if (!pusher) return
 
-    socket.on('dashboard-update', (newStats: DashboardStats) => {
+    const channel = pusher.subscribe('main-channel')
+
+    channel.bind('dashboard-update', (newStats: DashboardStats) => {
       setStats(newStats)
-      // Invalidate queries instead of refetching directly for better cache management
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-monthly-chart'] })
     })
 
-    socket.on('payment-update', () => {
-      // Invalidate queries instead of refetching directly
+    channel.bind('payment-update', () => {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-monthly-chart'] })
     })
 
     return () => {
-      socket.off('dashboard-update')
-      socket.off('payment-update')
+      channel.unbind_all()
+      pusher.unsubscribe('main-channel')
     }
   }, [queryClient])
 
