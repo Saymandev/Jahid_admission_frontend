@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { getUnreadCount } from '@/lib/notifications'
+import { getPusher } from '@/lib/pusher'
+import { useEffect, useState } from 'react'
 import { NotificationPanel } from './notification-panel'
-import { getSocket } from '@/lib/socket'
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
@@ -25,13 +25,15 @@ export function NotificationBell() {
 
     window.addEventListener('storage', handleStorageChange)
     
-    // Listen for real-time notifications via Socket.IO
-    const socket = getSocket()
+    // Listen for real-time notifications via Pusher
+    const pusher = getPusher()
+    const channel = pusher?.subscribe('main-channel')
+    
     const handleNotification = () => {
       updateUnreadCount()
     }
 
-    socket.on('notification', handleNotification)
+    channel?.bind('notification', handleNotification)
 
     // Also listen for custom storage events (same-tab updates)
     const handleCustomStorage = () => {
@@ -42,7 +44,8 @@ export function NotificationBell() {
     return () => {
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('notification-updated', handleCustomStorage)
-      socket.off('notification', handleNotification)
+      channel?.unbind('notification', handleNotification)
+      pusher?.unsubscribe('main-channel')
     }
   }, [])
 

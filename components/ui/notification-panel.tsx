@@ -1,21 +1,21 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  getNotifications,
-  markAsRead,
-  markAllAsRead,
-  deleteNotification,
-  clearAllNotifications,
-  getUnreadCount,
-  type Notification,
+    clearAllNotifications,
+    deleteNotification,
+    getNotifications,
+    getUnreadCount,
+    markAllAsRead,
+    markAsRead,
+    type Notification,
 } from '@/lib/notifications'
-import { getSocket } from '@/lib/socket'
+import { getPusher } from '@/lib/pusher'
+import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
 interface NotificationPanelProps {
   isOpen: boolean
@@ -37,8 +37,10 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
 
     loadNotifications()
 
-    // Listen for new notifications via socket
-    const socket = getSocket()
+    // Listen for new notifications via Pusher
+    const pusher = getPusher()
+    const channel = pusher?.subscribe('main-channel')
+
     const handleNotification = (notification: Omit<Notification, 'read'>) => {
       const { addNotification: addNotif } = require('@/lib/notifications')
       const updated = addNotif(notification)
@@ -46,10 +48,11 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
       setUnreadCount(getUnreadCount())
     }
 
-    socket.on('notification', handleNotification)
+    channel?.bind('notification', handleNotification)
 
     return () => {
-      socket.off('notification', handleNotification)
+      channel?.unbind('notification', handleNotification)
+      pusher?.unsubscribe('main-channel')
     }
   }, [])
 
