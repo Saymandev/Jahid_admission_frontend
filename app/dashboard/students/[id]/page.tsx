@@ -182,6 +182,29 @@ export default function StudentDetailPage() {
     },
   })
 
+  const deleteMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      const response = await api.delete(`/residential/payments/${paymentId}`)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['student-due-status', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['student', studentId] })
+      showToast('Payment deleted successfully!', 'success')
+    },
+    onError: (error: any) => {
+      showToast(error.response?.data?.message || 'Failed to delete payment', 'error')
+    },
+  })
+
+  const handleDeletePayment = (paymentId: string) => {
+    if (window.confirm('Are you sure you want to delete this payment? This will reverse any related balance updates.')) {
+      deleteMutation.mutate(paymentId)
+    }
+  }
+
+  const isAdmin = user?.role === 'admin'
+
   const onPaymentSubmit = (data: PaymentFormData) => {
     paymentMutation.mutate({
       studentId,
@@ -1094,10 +1117,20 @@ export default function StudentDetailPage() {
                               </div>
                               {p.notes && <div className="text-[11px] italic text-secondary mt-1">{p.notes}</div>}
                             </div>
-                            <div className="text-right">
+                            <div className="text-right flex flex-col items-end gap-1">
                               <span className={cn("font-bold", p.type === 'refund' ? "text-danger" : "text-primary")}>
                                 {p.type === 'refund' ? '-' : '+'} {maskCurrency(p.paidAmount, user?.role === 'staff')}
                               </span>
+                              {isAdmin && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-danger hover:bg-danger/10"
+                                  onClick={() => handleDeletePayment(p._id)}
+                                >
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                </Button>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -1209,7 +1242,7 @@ export default function StudentDetailPage() {
 
 
                           </div>
-                          <div className="text-right">
+                          <div className="text-right flex flex-col items-end gap-2">
                             <span
                               className={cn(
                                 'text-xs px-2 py-1 rounded-full font-medium',
@@ -1230,6 +1263,23 @@ export default function StudentDetailPage() {
                                   ? 'Partial'
                                   : 'Unpaid'}
                             </span>
+                            
+                            {isAdmin && payment.records && payment.records.length > 0 && (
+                              <div className="flex gap-1 mt-1">
+                                {payment.records.map((rec: any, idx: number) => (
+                                  <Button
+                                    key={rec._id || idx}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 text-danger hover:bg-danger/10"
+                                    onClick={() => handleDeletePayment(rec._id)}
+                                    title={`Delete transaction (${maskCurrency(rec.paidAmount, user?.role === 'staff')})`}
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>

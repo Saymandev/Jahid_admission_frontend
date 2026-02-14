@@ -135,6 +135,26 @@ export default function StudentsPage() {
         return
       }
 
+      // If phone is entered, try the cross-module lookup for auto-fill
+      if (phoneLength >= 10) {
+        try {
+          const lookupResponse = await api.get('/residential/students/lookup', {
+            params: { phone: phoneValue.trim() }
+          })
+          const match = lookupResponse.data
+          if (match) {
+            if (!watch('name')) setValue('name', match.name)
+            if (!watch('guardianName')) setValue('guardianName', match.guardianName)
+            if (!watch('guardianPhone')) setValue('guardianPhone', match.guardianPhone)
+            if (match.source === 'coaching') {
+              showToast(`Found student details from Coaching: ${match.name}`, 'info')
+            }
+          }
+        } catch (error) {
+          console.error('Lookup error:', error)
+        }
+      }
+
       setIsSearching(true)
       try {
         const response = await api.get('/residential/students/search', {

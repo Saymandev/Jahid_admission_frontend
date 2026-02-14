@@ -82,6 +82,8 @@ export default function CoachingPage() {
     handleSubmit: handleAdmissionSubmit,
     formState: { errors: admissionErrors },
     reset: resetAdmission,
+    watch: watchAdmission,
+    setValue: setAdmissionValue,
   } = useForm<AdmissionFormData>({
     resolver: zodResolver(admissionSchema),
     defaultValues: {
@@ -137,6 +139,44 @@ export default function CoachingPage() {
     },
   })
 
+  const { data: coachingPayments } = useQuery({
+    queryKey: ['coaching-payments', selectedStudentDetails?._id],
+    queryFn: async () => {
+      if (!selectedStudentDetails) return []
+      const response = await api.get(`/coaching/admissions/${selectedStudentDetails._id}/payments`)
+      return response.data
+    },
+    enabled: !!selectedStudentDetails,
+  })
+
+  const coachingAdmissionPhone = watchAdmission('phone')
+
+  useEffect(() => {
+    const lookupStudent = async () => {
+      if (!coachingAdmissionPhone || coachingAdmissionPhone.trim().length < 10) return
+
+      try {
+        const response = await api.get('/residential/students/lookup', {
+          params: { phone: coachingAdmissionPhone.trim() }
+        })
+        const match = response.data
+        if (match) {
+          if (!watchAdmission('studentName')) setAdmissionValue('studentName', match.name)
+          if (!watchAdmission('guardianName')) setAdmissionValue('guardianName', match.guardianName)
+          if (!watchAdmission('guardianPhone')) setAdmissionValue('guardianPhone', match.guardianPhone)
+          
+          if (match.source === 'residential') {
+            showToast(`Found student details from Residential: ${match.name}`, 'info')
+          }
+        }
+      } catch (error) {
+        console.error('Lookup error:', error)
+      }
+    }
+
+    lookupStudent()
+  }, [coachingAdmissionPhone, setAdmissionValue, watchAdmission])
+
   const admissionMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await api.post('/coaching/admissions', data)
@@ -179,6 +219,27 @@ export default function CoachingPage() {
     },
   })
 
+  const deletePaymentMutation = useMutation({
+    mutationFn: async (paymentId: string) => {
+      const response = await api.delete(`/coaching/admissions/payments/${paymentId}`)
+      return response.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admissions'] })
+      queryClient.invalidateQueries({ queryKey: ['coaching-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['coaching-payments', selectedStudentDetails?._id] })
+      showToast('Payment deleted successfully!', 'success')
+    },
+    onError: (error: any) => {
+      showToast(error.response?.data?.message || 'Failed to delete payment', 'error')
+    },
+  })
+
+  const handleDeletePayment = (paymentId: string) => {
+    if (window.confirm('Are you sure you want to delete this payment? This will reverse any related balance updates.')) {
+      deletePaymentMutation.mutate(paymentId)
+    }
+  }
   const onAdmissionSubmit = (data: AdmissionFormData) => {
     admissionMutation.mutate({
       ...data,
@@ -915,6 +976,49 @@ export default function CoachingPage() {
                     </div>
                   </div>
                 </div>
+
+                {coachingPayments && coachingPayments.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-secondary mb-2">Transaction History</h3>
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-secondary/5 border-b">
+                          <tr>
+                            <th className="px-4 py-2 text-left font-medium">Date</th>
+                            <th className="px-4 py-2 text-left font-medium">Method</th>
+                            <th className="px-4 py-2 text-right font-medium">Amount</th>
+                            {isAdmin && <th className="px-4 py-2 text-right font-medium">Action</th>}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y">
+                          {coachingPayments.map((p: any) => (
+                            <tr key={p._id} className="hover:bg-secondary/5 transition-colors">
+                              <td className="px-4 py-2">
+                                {new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                              </td>
+                              <td className="px-4 py-2 capitalize">{p.paymentMethod}</td>
+                              <td className="px-4 py-2 text-right font-semibold text-success">
+                                {p.paidAmount.toLocaleString()} BDT
+                              </td>
+                              {isAdmin && (
+                                <td className="px-4 py-2 text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0 text-danger hover:bg-danger/10"
+                                    onClick={() => handleDeletePayment(p._id)}
+                                  >
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-4 h-4"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                  </Button>
+                                </td>
+                              )}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
                 <div className="flex justify-end gap-2 pt-4 border-t">
                   <Button variant="outline" onClick={() => setSelectedStudentDetails(null)}>
