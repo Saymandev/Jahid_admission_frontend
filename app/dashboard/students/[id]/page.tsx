@@ -1163,7 +1163,7 @@ export default function StudentDetailPage() {
                                     Rent: {maskCurrency(payment.rentAmount || 0, user?.role === 'staff')}
                                   </div>
                                   <div>
-                                    Paid: {maskCurrency(payment.paidAmount, user?.role === 'staff')}
+                                    Paid: {maskCurrency(payment.paidAmount - (payment.advanceGenerated || 0), user?.role === 'staff')}
                                     {payment.advanceApplied && payment.advanceApplied > 0 && (
                                       <span className="text-primary ml-1">
                                         (Advance: {maskCurrency(payment.advanceApplied, user?.role === 'staff')})

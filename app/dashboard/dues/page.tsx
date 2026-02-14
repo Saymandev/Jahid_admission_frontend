@@ -345,7 +345,7 @@ export default function DuesPage() {
                                       <span className={cn(
                                         payment.paidAmount > 0 ? 'text-success' : 'text-secondary'
                                       )}>
-                                        Paid: <span className="font-medium">{maskCurrency(payment.paidAmount, isStaff)}</span>
+                                        Paid: <span className="font-medium">{maskCurrency(payment.paidAmount - (payment.advanceGenerated || 0), isStaff)}</span>
                                       </span>
                                       {payment.advanceApplied > 0 && (
                                         <span className="text-primary">

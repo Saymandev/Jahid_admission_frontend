@@ -148,7 +148,7 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
               </div>
               {payment && (
                 <div className="text-xs mt-1">
-                  <div>Paid: {payment.paidAmount.toLocaleString()}</div>
+                  <div>Paid: {(payment.paidAmount - (payment.advanceGenerated || 0)).toLocaleString()}</div>
                   {payment.advanceApplied && payment.advanceApplied > 0 && (
                     <div className="text-primary font-semibold text-[10px] mt-0.5" title="Advance used to pay this month">
                       ⚡ Applied: {payment.advanceApplied.toLocaleString()}
