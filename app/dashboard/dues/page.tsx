@@ -29,6 +29,8 @@ interface StudentDue {
     rentAmount: number
     paidAmount: number
     dueAmount: number
+    advanceApplied?: number
+    advanceGenerated?: number
     status: 'paid' | 'partial' | 'unpaid'
   }>
   dueStatus: 'no_due' | 'one_month' | 'two_plus_months'
@@ -345,6 +347,16 @@ export default function DuesPage() {
                                       )}>
                                         Paid: <span className="font-medium">{maskCurrency(payment.paidAmount, isStaff)}</span>
                                       </span>
+                                      {payment.advanceApplied > 0 && (
+                                        <span className="text-primary">
+                                          Applied: <span className="font-medium">{maskCurrency(payment.advanceApplied, isStaff)}</span>
+                                        </span>
+                                      )}
+                                      {payment.advanceGenerated > 0 && (
+                                        <span className="text-success">
+                                          Extra: <span className="font-medium">{maskCurrency(payment.advanceGenerated, isStaff)}</span>
+                                        </span>
+                                      )}
                                       {payment.dueAmount > 0 && (
                                         <span className="text-danger">
                                           Due: <span className="font-medium">{maskCurrency(payment.dueAmount, isStaff)}</span>

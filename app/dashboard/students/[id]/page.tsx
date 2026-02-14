@@ -1141,6 +1141,14 @@ export default function StudentDetailPage() {
                                   Advance Paid
                                 </span>
                               )}
+                              {payment.advanceGenerated && payment.advanceGenerated > 0 && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-success/20 text-success border border-success/30 font-medium flex items-center gap-1">
+                                  <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
+                                  </svg>
+                                  Extra (Advance)
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-secondary mt-1 space-y-0.5">
                               {payment.type && payment.type !== 'rent' ? (
@@ -1159,6 +1167,11 @@ export default function StudentDetailPage() {
                                     {payment.advanceApplied && payment.advanceApplied > 0 && (
                                       <span className="text-primary ml-1">
                                         (Advance: {maskCurrency(payment.advanceApplied, user?.role === 'staff')})
+                                      </span>
+                                    )}
+                                    {payment.advanceGenerated && payment.advanceGenerated > 0 && (
+                                      <span className="text-success ml-1">
+                                        (Extra: {maskCurrency(payment.advanceGenerated, user?.role === 'staff')} → Advance)
                                       </span>
                                     )}
                                   </div>

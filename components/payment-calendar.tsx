@@ -10,6 +10,7 @@ interface Payment {
   dueAmount: number
   advanceAmount: number
   advanceApplied?: number
+  advanceGenerated?: number
   paymentMethod?: string
   paymentDate?: string
   status: 'paid' | 'partial' | 'unpaid'
@@ -149,8 +150,13 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
                 <div className="text-xs mt-1">
                   <div>Paid: {payment.paidAmount.toLocaleString()}</div>
                   {payment.advanceApplied && payment.advanceApplied > 0 && (
-                    <div className="text-primary font-semibold text-[10px] mt-0.5">
-                      ⚡ Advance: {payment.advanceApplied.toLocaleString()}
+                    <div className="text-primary font-semibold text-[10px] mt-0.5" title="Advance used to pay this month">
+                      ⚡ Applied: {payment.advanceApplied.toLocaleString()}
+                    </div>
+                  )}
+                  {payment.advanceGenerated && payment.advanceGenerated > 0 && (
+                    <div className="text-success font-semibold text-[10px] mt-0.5" title="Overpayment recorded as future advance">
+                      ✨ Extra: {payment.advanceGenerated.toLocaleString()}
                     </div>
                   )}
                   {payment.dueAmount > 0 && (
