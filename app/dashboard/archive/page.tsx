@@ -1,63 +1,119 @@
 'use client'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProtectedRoute } from '@/components/protected-route'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
+import { maskCurrency } from '@/lib/mask-value'
 import { showToast } from '@/lib/toast'
-import { useAuthStore } from '@/store/auth-store'
-import { useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
-
-interface ArchivedStudent {
-  _id: string
-  studentId: string
-  name: string
-  phone: string
-  roomId?: {
-    name: string
-  }
-  deletedAt: string
-}
-
-interface ArchivedRoom {
-  _id: string
-  name: string
-  floor?: string
-  deletedAt: string
-}
-
-interface ArchivedAdmission {
-  _id: string
-  admissionId: string
-  studentName: string
-  course: string
-  batch: string
-  deletedAt: string
-}
+import { useAuthStore } from '@/store/auth-store'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 
 export default function ArchivePage() {
   const user = useAuthStore((state) => state.user)
   const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState<'students' | 'rooms' | 'admissions'>('students')
+  const [activeTab, setActiveTab] = useState<'students' | 'rooms' | 'admissions' | 'transactions'>('students')
   const [searchQuery, setSearchQuery] = useState('')
-  const [page, setPage] = useState(1)
-  const pageSize = 10
+  const [
+    restoreId,
+    setRestoreId,
+  ] = useState<string | null>(null)
+  const [restoreType, setRestoreType] = useState<'student' | 'room' | 'admission' | 'payment' | null>(null)
 
-  // Note: These endpoints need to be created in the backend
-  // For now, we'll show a message that archive viewing is not yet implemented
-  // You'll need to add endpoints like:
-  // GET /residential/students?includeDeleted=true
-  // GET /residential/rooms?includeDeleted=true
-  // GET /coaching/admissions?includeDeleted=true
+  // Students Query
+  const { data: students, isLoading: loadingStudents } = useQuery({
+    queryKey: ['archived-students'],
+    queryFn: async () => {
+      const res = await api.get('/residential/students/archived')
+      return res.data
+    },
+    enabled: activeTab === 'students',
+  })
+
+  // Rooms Query
+  const { data: rooms, isLoading: loadingRooms } = useQuery({
+    queryKey: ['archived-rooms'],
+    queryFn: async () => {
+      const res = await api.get('/residential/rooms/archived')
+      return res.data
+    },
+    enabled: activeTab === 'rooms',
+  })
+
+  // Admissions Query
+  const { data: admissions, isLoading: loadingAdmissions } = useQuery({
+    queryKey: ['archived-admissions'],
+    queryFn: async () => {
+      const res = await api.get('/coaching/admissions/archived')
+      return res.data
+    },
+    enabled: activeTab === 'admissions',
+  })
+
+  // Transactions Query
+  const { data: transactions, isLoading: loadingTransactions } = useQuery({
+    queryKey: ['archived-transactions'],
+    queryFn: async () => {
+      const res = await api.get('/residential/transactions', {
+        params: { onlyDeleted: true }
+      })
+      return res.data.data // Pagination structure
+    },
+    enabled: activeTab === 'transactions',
+  })
+
+  // Restore Mutation
+  const restoreMutation = useMutation({
+    mutationFn: async ({ id, type }: { id: string; type: 'student' | 'room' | 'admission' | 'payment' }) => {
+      let endpoint = ''
+      if (type === 'student') endpoint = `/residential/students/${id}/restore`
+      if (type === 'room') endpoint = `/residential/rooms/${id}/restore`
+      if (type === 'admission') endpoint = `/coaching/admissions/${id}/restore`
+      if (type === 'payment') endpoint = `/residential/payments/${id}/restore`
+      
+      const res = await api.post(endpoint)
+      return res.data
+    },
+    onSuccess: () => {
+      showToast('Restored successfully!', 'success')
+      setRestoreId(null)
+      setRestoreType(null)
+      queryClient.invalidateQueries({ queryKey: [`archived-${activeTab}`] })
+      // Also invalidate main lists to show restored items
+      if (activeTab === 'students') queryClient.invalidateQueries({ queryKey: ['students'] })
+      if (activeTab === 'rooms') queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      if (activeTab === 'admissions') queryClient.invalidateQueries({ queryKey: ['admissions'] })
+      if (activeTab === 'transactions') queryClient.invalidateQueries({ queryKey: ['transactions'] })
+    },
+    onError: (err: any) => {
+      showToast(err.response?.data?.message || 'Failed to restore', 'error')
+    }
+  })
+
+  const handleRestore = (id: string, type: 'student' | 'room' | 'admission' | 'payment') => {
+    setRestoreId(id)
+    setRestoreType(type)
+  }
+
+  const filteredData = (data: any[]) => {
+    if (!data) return []
+    if (!searchQuery) return data
+    const lower = searchQuery.toLowerCase()
+    return data.filter(item => {
+      return Object.values(item).some(val => 
+        String(val).toLowerCase().includes(lower)
+      )
+    })
+  }
 
   if (user?.role !== 'admin') {
     return (
       <ProtectedRoute>
-        <div className="p-6">You don't have permission to access this page.</div>
+        <div className="p-6">You don't have permission to access the archive.</div>
       </ProtectedRoute>
     )
   }
@@ -67,75 +123,174 @@ export default function ArchivePage() {
       <div className="p-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Archive</h1>
-          <p className="text-secondary mt-1">View and manage archived data</p>
+          <p className="text-secondary mt-1">View and restore deleted records</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b">
-          <button
-            onClick={() => setActiveTab('students')}
-            className={cn(
-              'px-4 py-2 font-medium border-b-2 transition-colors',
-              activeTab === 'students'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-secondary hover:text-primary'
-            )}
-          >
-            Archived Students
-          </button>
-          <button
-            onClick={() => setActiveTab('rooms')}
-            className={cn(
-              'px-4 py-2 font-medium border-b-2 transition-colors',
-              activeTab === 'rooms'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-secondary hover:text-primary'
-            )}
-          >
-            Archived Rooms
-          </button>
-          <button
-            onClick={() => setActiveTab('admissions')}
-            className={cn(
-              'px-4 py-2 font-medium border-b-2 transition-colors',
-              activeTab === 'admissions'
-                ? 'border-primary text-primary'
-                : 'border-transparent text-secondary hover:text-primary'
-            )}
-          >
-            Archived Admissions
-          </button>
+        <div className="flex gap-2 border-b overflow-x-auto">
+          {[
+            { id: 'students', label: 'Students' },
+            { id: 'rooms', label: 'Rooms' },
+            { id: 'admissions', label: 'Admissions' },
+            { id: 'transactions', label: 'Transactions' },
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={cn(
+                'px-4 py-2 font-medium border-b-2 transition-colors whitespace-nowrap',
+                activeTab === tab.id
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-secondary hover:text-primary'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
 
-        {/* Search */}
-        <Input
-          placeholder="Search archived items..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="max-w-md"
-        />
+        <div className="flex justify-between items-center">
+          <Input
+            placeholder={`Search archived ${activeTab}...`}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="max-w-md"
+          />
+          <Button variant="outline" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: [`archived-${activeTab}`] })}>
+            Refresh
+          </Button>
+        </div>
 
-        {/* Content */}
-        <Card>
-          <CardContent className="p-12 text-center">
-            <div className="text-6xl mb-4">📦</div>
-            <h3 className="text-lg font-semibold mb-2">Archive View Coming Soon</h3>
-            <p className="text-secondary text-sm mb-4">
-              The archive functionality requires backend endpoints to be implemented.
-            </p>
-            <p className="text-secondary text-sm">
-              Backend endpoints needed:
-            </p>
-            <ul className="text-left text-sm text-secondary mt-2 space-y-1 max-w-md mx-auto">
-              <li>• GET /residential/students?includeDeleted=true</li>
-              <li>• GET /residential/rooms?includeDeleted=true</li>
-              <li>• GET /coaching/admissions?includeDeleted=true</li>
-              <li>• POST /residential/students/:id/restore</li>
-              <li>• POST /residential/rooms/:id/restore</li>
-              <li>• POST /coaching/admissions/:id/restore</li>
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="min-h-[300px]">
+          {/* Students Tab */}
+          {activeTab === 'students' && (
+            <div className="space-y-4">
+              {loadingStudents ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : filteredData(students || []).length === 0 ? (
+                <div className="text-center py-8 text-secondary">No archived students found</div>
+              ) : (
+                filteredData(students || []).map((student: any) => (
+                  <Card key={student._id}>
+                    <CardContent className="p-4 flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold">{student.name} ({student.studentId})</p>
+                        <p className="text-sm text-secondary">Phone: {student.phone}</p>
+                        <p className="text-xs text-secondary mt-1">Deleted: {new Date(student.deletedAt).toLocaleDateString()}</p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleRestore(student._id, 'student')}>
+                        Restore
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Rooms Tab */}
+          {activeTab === 'rooms' && (
+            <div className="space-y-4">
+               {loadingRooms ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : filteredData(rooms || []).length === 0 ? (
+                <div className="text-center py-8 text-secondary">No archived rooms found</div>
+              ) : (
+                filteredData(rooms || []).map((room: any) => (
+                  <Card key={room._id}>
+                    <CardContent className="p-4 flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold">{room.name} (Floor: {room.floor})</p>
+                        <p className="text-xs text-secondary mt-1">Deleted: {new Date(room.deletedAt).toLocaleDateString()}</p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleRestore(room._id, 'room')}>
+                        Restore
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Admissions Tab */}
+          {activeTab === 'admissions' && (
+            <div className="space-y-4">
+               {loadingAdmissions ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : filteredData(admissions || []).length === 0 ? (
+                <div className="text-center py-8 text-secondary">No archived admissions found</div>
+              ) : (
+                filteredData(admissions || []).map((admission: any) => (
+                  <Card key={admission._id}>
+                    <CardContent className="p-4 flex justify-between items-center">
+                      <div>
+                        <p className="font-semibold">{admission.studentName} ({admission.admissionId})</p>
+                         <p className="text-sm text-secondary">{admission.course} - {admission.batch}</p>
+                        <p className="text-xs text-secondary mt-1">Deleted: {new Date(admission.deletedAt).toLocaleDateString()}</p>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleRestore(admission._id, 'admission')}>
+                        Restore
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
+
+           {/* Transactions Tab */}
+           {activeTab === 'transactions' && (
+            <div className="space-y-4">
+               {loadingTransactions ? (
+                <div className="text-center py-8">Loading...</div>
+              ) : filteredData(transactions || []).length === 0 ? (
+                <div className="text-center py-8 text-secondary">No archived transactions found</div>
+              ) : (
+                filteredData(transactions || []).map((txn: any) => (
+                  <Card key={txn._id}>
+                    <CardContent className="p-4 flex justify-between items-center">
+                      <div>
+                        <div className="flex gap-2 items-center">
+                          <span className={cn(
+                            "text-xs px-2 py-0.5 rounded uppercase font-bold",
+                            txn.source === 'residential' ? "bg-blue-100 text-blue-700" : "bg-purple-100 text-purple-700"
+                          )}>
+                            {txn.source}
+                          </span>
+                          <span className="font-semibold">{maskCurrency(txn.amount || txn.paidAmount, user?.role === 'staff')}</span>
+                        </div>
+                        <p className="text-sm mt-1">
+                           {txn.studentName} 
+                           <span className="text-secondary mx-1">•</span>
+                           {txn.paymentType}
+                        </p>
+                        
+                        <p className="text-xs text-secondary mt-1">
+                          Deleted: {txn.deletedAt ? new Date(txn.deletedAt).toLocaleDateString() : 'Unknown'}
+                        </p>
+                        {txn.notes && <p className="text-xs text-secondary italic">"{txn.notes}"</p>}
+                      </div>
+                      <Button variant="outline" size="sm" onClick={() => handleRestore(txn._id, 'payment')}>
+                        Restore
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        <ConfirmDialog
+          open={!!restoreId}
+          onOpenChange={(open) => !open && setRestoreId(null)}
+          onConfirm={() => restoreId && restoreType && restoreMutation.mutate({ id: restoreId, type: restoreType })}
+          title={`Restore ${restoreType?.charAt(0).toUpperCase()}${restoreType?.slice(1)}`}
+          description="Are you sure you want to restore this item? It will reappear in the active lists."
+          confirmText="Restore"
+           isLoading={restoreMutation.isPending}
+        />
       </div>
     </ProtectedRoute>
   )
