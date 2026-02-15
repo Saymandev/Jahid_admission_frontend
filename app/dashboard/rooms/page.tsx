@@ -279,94 +279,93 @@ export default function RoomsPage() {
           className="max-w-md"
         />
 
-        {isAdmin && showForm && (
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold">
+                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
                 Add New Room
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Room Name/Number *</Label>
-                    <Input
-                      id="name"
-                      {...register('name')}
-                    />
-                    {errors.name && (
-                      <p className="text-sm text-danger">{errors.name.message}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="floor">Floor</Label>
-                    <Input
-                      id="floor"
-                      {...register('floor')}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="monthlyRentPerBed">Monthly Rent per Bed (BDT) *</Label>
-                    <Input
-                      id="monthlyRentPerBed"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="e.g., 5000"
-                      {...register('monthlyRentPerBed')}
-                    />
-                    {errors.monthlyRentPerBed && (
-                      <p className="text-sm text-danger">{errors.monthlyRentPerBed.message}</p>
-                    )}
-                    <p className="text-xs text-secondary">This price will apply to all beds in the room</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="totalBeds">Total Beds *</Label>
-                    <Input
-                      id="totalBeds"
-                      type="number"
-                      min="1"
-                      {...register('totalBeds')}
-                    />
-                    {errors.totalBeds && (
-                      <p className="text-sm text-danger">{errors.totalBeds.message}</p>
-                    )}
-                    <p className="text-xs text-secondary">We&apos;ll automatically name them Bed 1, Bed 2, etc.</p>
-                  </div>
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Room Name/Number *</Label>
+                  <Input
+                    id="name"
+                    {...register('name')}
+                    placeholder="e.g., Room 101"
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-danger">{errors.name.message}</p>
+                  )}
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="floor">Floor</Label>
+                  <Input
+                    id="floor"
+                    {...register('floor')}
+                    placeholder="e.g., 1st Floor"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="monthlyRentPerBed">Monthly Rent per Bed (BDT) *</Label>
+                  <Input
+                    id="monthlyRentPerBed"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="e.g., 5000"
+                    {...register('monthlyRentPerBed')}
+                  />
+                  {errors.monthlyRentPerBed && (
+                    <p className="text-sm text-danger">{errors.monthlyRentPerBed.message}</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="totalBeds">Total Beds *</Label>
+                  <Input
+                    id="totalBeds"
+                    type="number"
+                    min="1"
+                    placeholder="e.g., 4"
+                    {...register('totalBeds')}
+                  />
+                  {errors.totalBeds && (
+                    <p className="text-sm text-danger">{errors.totalBeds.message}</p>
+                  )}
+                </div>
+              </div>
 
-                <div className="flex gap-3 pt-4">
-                  <Button
-                    type="submit"
-                    disabled={createMutation.isPending}
-                    className="flex-1 h-11 font-semibold"
-                  >
-                    {createMutation.isPending ? (
-                      <>
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        Create Room
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
+              <div className="flex gap-3 justify-end pt-4 border-t">
+                <Button variant="outline" type="button" onClick={() => setShowForm(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={createMutation.isPending}
+                  className="px-8 font-semibold"
+                >
+                  {createMutation.isPending ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Creating...
+                    </>
+                  ) : (
+                    'Create Room'
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
 
         {/* Rent Form Modal */}
         {showRentForm && selectedBed && (
@@ -586,7 +585,7 @@ export default function RoomsPage() {
                         </span>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-2">
                           <Button
                             size="sm"
                             variant="outline"
