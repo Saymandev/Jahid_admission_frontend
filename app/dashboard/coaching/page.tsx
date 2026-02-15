@@ -5,6 +5,7 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
 import api from '@/lib/api'
 import { exportToCSV } from '@/lib/csv-export'
@@ -28,6 +29,8 @@ interface Admission {
   totalFee: number
   paidAmount: number
   dueAmount: number
+  guardianName?: string
+  guardianPhone?: string
   status: 'pending' | 'completed' | 'cancelled'
   admissionDate: string
 }
@@ -61,6 +64,7 @@ export default function CoachingPage() {
   const [showPaymentForm, setShowPaymentForm] = useState(false)
   const [selectedAdmission, setSelectedAdmission] = useState<string | null>(null)
   const [selectedStudentDetails, setSelectedStudentDetails] = useState<Admission | null>(null)
+  const [editingAdmission, setEditingAdmission] = useState<Admission | null>(null)
   
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -221,6 +225,21 @@ export default function CoachingPage() {
     },
   })
 
+  const updateAdmissionMutation = useMutation({
+    mutationFn: (data: any) => api.patch(`/coaching/admissions/${editingAdmission?._id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admissions'] })
+      queryClient.invalidateQueries({ queryKey: ['coaching-stats'] })
+      setShowAdmissionForm(false)
+      setEditingAdmission(null)
+      resetAdmission()
+      showToast('Admission updated successfully!', 'success')
+    },
+    onError: (error: any) => {
+      showToast(error.response?.data?.message || 'Update failed', 'error')
+    },
+  })
+
   const deletePaymentMutation = useMutation({
     mutationFn: async (paymentId: string) => {
       const response = await api.delete(`/coaching/admissions/payments/${paymentId}`)
@@ -258,12 +277,24 @@ export default function CoachingPage() {
   const handleConfirmAdmission = () => {
     if (!pendingAdmissionData) return
 
-    admissionMutation.mutate({
+    const payload = {
       ...pendingAdmissionData,
       totalFee: parseFloat(pendingAdmissionData.totalFee),
       paidAmount: pendingAdmissionData.paidAmount ? parseFloat(pendingAdmissionData.paidAmount) : 0,
-    })
+    }
+
+    if (editingAdmission) {
+      updateAdmissionMutation.mutate({
+        studentName: pendingAdmissionData.studentName,
+        phone: pendingAdmissionData.phone,
+        guardianName: pendingAdmissionData.guardianName,
+        guardianPhone: pendingAdmissionData.guardianPhone,
+      })
+    } else {
+      admissionMutation.mutate(payload)
+    }
     setShowConfirmAdmission(false)
+    setPendingAdmissionData(null)
   }
 
 
@@ -389,24 +420,18 @@ export default function CoachingPage() {
           <div className="flex gap-2">
             <Button
               variant="outline"
-              onClick={() => {
-                setShowManageCourses(!showManageCourses)
-                setShowManageBatches(false)
-              }}
+              onClick={() => setShowManageCourses(true)}
             >
               Manage Courses
             </Button>
             <Button
               variant="outline"
-              onClick={() => {
-                setShowManageBatches(!showManageBatches)
-                setShowManageCourses(false)
-              }}
+              onClick={() => setShowManageBatches(true)}
             >
               Manage Batches
             </Button>
-            <Button onClick={() => setShowAdmissionForm(!showAdmissionForm)}>
-              {showAdmissionForm ? 'Cancel' : 'New Admission'}
+            <Button onClick={() => setShowAdmissionForm(true)}>
+              New Admission
             </Button>
             <Button variant="secondary" onClick={handleExportSheet}>
               Download CSV
@@ -456,83 +481,6 @@ export default function CoachingPage() {
           </Select>
         </div>
 
-        {/* Manage Courses */}
-        {isAdmin && showManageCourses && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Courses</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {uniqueCourses.length === 0 ? (
-                  <p className="text-secondary">No courses found (in current view)</p>
-                ) : (
-                  uniqueCourses.map((course) => (
-                    <div
-                      key={course.name}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-primary/5 transition-colors"
-                    >
-                      <div>
-                        <span className="font-medium">{course.name}</span>
-                        <span className="text-sm text-secondary ml-2">
-                          ({course.count} admission{course.count !== 1 ? 's' : ''})
-                        </span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteCourse(course.name)}
-                        disabled={course.count > 0}
-                        className={course.count > 0 ? 'opacity-50 cursor-not-allowed' : ''}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Manage Batches */}
-        {isAdmin && showManageBatches && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Manage Batches</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {uniqueBatches.length === 0 ? (
-                  <p className="text-secondary">No batches found (in current view)</p>
-                ) : (
-                  uniqueBatches.map((batch) => (
-                    <div
-                      key={batch.name}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-primary/5 transition-colors"
-                    >
-                      <div>
-                        <span className="font-medium">{batch.name}</span>
-                        <span className="text-sm text-secondary ml-2">
-                          ({batch.count} admission{batch.count !== 1 ? 's' : ''})
-                        </span>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteBatch(batch.name)}
-                        disabled={batch.count > 0}
-                        className={batch.count > 0 ? 'opacity-50 cursor-not-allowed' : ''}
-                      >
-                        Delete
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {stats && (
           <div className="grid gap-4 md:grid-cols-4">
@@ -620,6 +568,29 @@ export default function CoachingPage() {
                       >
                         Add Payment
                       </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-primary/30 text-primary hover:bg-primary/5"
+                          onClick={() => {
+                            setEditingAdmission(admission)
+                            resetAdmission({
+                              studentName: admission.studentName,
+                              phone: admission.phone,
+                              guardianName: admission.guardianName || '',
+                              guardianPhone: admission.guardianPhone || '',
+                              course: admission.course,
+                              batch: admission.batch,
+                              totalFee: admission.totalFee.toString(),
+                              admissionDate: admission.admissionDate.split('T')[0],
+                            })
+                            setShowAdmissionForm(true)
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -826,6 +797,211 @@ export default function CoachingPage() {
           </DialogContent>
         </Dialog>
       </div>
+        {/* Admission Form Dialog */}
+        <Dialog open={showAdmissionForm} onOpenChange={(open: boolean) => {
+          if (!open) {
+            setShowAdmissionForm(false)
+            setEditingAdmission(null)
+            resetAdmission()
+          }
+        }}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>{editingAdmission ? 'Edit Admission' : 'New Admission'}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleAdmissionSubmit(onAdmissionSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="studentName">Student Name *</Label>
+                  <Input id="studentName" {...registerAdmission('studentName')} />
+                  {admissionErrors.studentName && <p className="text-xs text-danger mt-1">{admissionErrors.studentName.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone *</Label>
+                  <Input id="phone" {...registerAdmission('phone')} />
+                  {admissionErrors.phone && <p className="text-xs text-danger mt-1">{admissionErrors.phone.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guardianName">Guardian Name</Label>
+                  <Input id="guardianName" {...registerAdmission('guardianName')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="guardianPhone">Guardian Phone</Label>
+                  <Input id="guardianPhone" {...registerAdmission('guardianPhone')} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="course">Course *</Label>
+                  <Select id="course" {...registerAdmission('course')} disabled={!!editingAdmission}>
+                    <option value="">Select Course</option>
+                    {uniqueCourses.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                  </Select>
+                  {admissionErrors.course && <p className="text-xs text-danger mt-1">{admissionErrors.course.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="batch">Batch *</Label>
+                  <Select id="batch" {...registerAdmission('batch')} disabled={!!editingAdmission}>
+                    <option value="">Select Batch</option>
+                    {uniqueBatches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                  </Select>
+                  {admissionErrors.batch && <p className="text-xs text-danger mt-1">{admissionErrors.batch.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="totalFee">Total Fee (BDT) *</Label>
+                  <Input id="totalFee" type="number" {...registerAdmission('totalFee')} disabled={!!editingAdmission} />
+                  {admissionErrors.totalFee && <p className="text-xs text-danger mt-1">{admissionErrors.totalFee.message}</p>}
+                </div>
+                {!editingAdmission && (
+                  <div className="space-y-2">
+                    <Label htmlFor="paidAmount">Initial Paid (Optional)</Label>
+                    <Input id="paidAmount" type="number" {...registerAdmission('paidAmount')} />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="admissionDate">Admission Date *</Label>
+                  <Input id="admissionDate" type="date" {...registerAdmission('admissionDate')} disabled={!!editingAdmission} />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" type="button" onClick={() => {
+                  setShowAdmissionForm(false)
+                  setEditingAdmission(null)
+                  resetAdmission()
+                }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={admissionMutation.isPending || updateAdmissionMutation.isPending}>
+                  {editingAdmission ? 'Update Admission' : 'Create Admission'}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Manage Courses Dialog */}
+        <Dialog open={showManageCourses} onOpenChange={setShowManageCourses}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Manage Courses</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {uniqueCourses.length === 0 ? (
+                  <p className="text-secondary">No courses found</p>
+                ) : (
+                  uniqueCourses.map((course) => (
+                    <div
+                      key={course.name}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-primary/5 transition-colors"
+                    >
+                      <div>
+                        <span className="font-medium">{course.name}</span>
+                        <span className="text-sm text-secondary ml-2">
+                          ({course.count} admission{course.count !== 1 ? 's' : ''})
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteCourse(course.name)}
+                        disabled={course.count > 0}
+                        className={course.count > 0 ? 'opacity-50 cursor-not-allowed' : ''}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex justify-end pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowManageCourses(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Manage Batches Dialog */}
+        <Dialog open={showManageBatches} onOpenChange={setShowManageBatches}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Manage Batches</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                {uniqueBatches.length === 0 ? (
+                  <p className="text-secondary">No batches found</p>
+                ) : (
+                  uniqueBatches.map((batch) => (
+                    <div
+                      key={batch.name}
+                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-primary/5 transition-colors"
+                    >
+                      <div>
+                        <span className="font-medium">{batch.name}</span>
+                        <span className="text-sm text-secondary ml-2">
+                          ({batch.count} admission{batch.count !== 1 ? 's' : ''})
+                        </span>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteBatch(batch.name)}
+                        disabled={batch.count > 0}
+                        className={batch.count > 0 ? 'opacity-50 cursor-not-allowed' : ''}
+                      >
+                        Delete
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <div className="flex justify-end pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowManageBatches(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Payment Form Dialog */}
+        <Dialog open={showPaymentForm} onOpenChange={(open: boolean) => !open && setShowPaymentForm(false)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Add Payment</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handlePaymentSubmit(onPaymentSubmit)} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="paidAmount">Paid Amount (BDT) *</Label>
+                <Input id="paidAmount" type="number" {...registerPayment('paidAmount')} />
+                {paymentErrors.paidAmount && <p className="text-xs text-danger mt-1">{paymentErrors.paidAmount.message}</p>}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethod">Payment Method *</Label>
+                <Select id="paymentMethod" {...registerPayment('paymentMethod')}>
+                  <option value="cash">Cash</option>
+                  <option value="bkash">bKash</option>
+                  <option value="bank">Bank</option>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="transactionId">Transaction ID (Optional)</Label>
+                <Input id="transactionId" {...registerPayment('transactionId')} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Input id="notes" {...registerPayment('notes')} />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" type="button" onClick={() => setShowPaymentForm(false)}>Cancel</Button>
+                <Button type="submit" disabled={paymentMutation.isPending}>Record Payment</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
       <ConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}

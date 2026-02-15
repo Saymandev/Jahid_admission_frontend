@@ -581,6 +581,7 @@ export default function StudentsPage() {
                     <Select
                       id="roomId"
                       {...register('roomId')}
+                      disabled={!!editingStudent}
                     >
                       <option value="">Select Room</option>
                       {rooms?.map((room: any) => (
@@ -606,6 +607,7 @@ export default function StudentsPage() {
                           id="bedNumber"
                           className="h-10"
                           {...register('bedNumber', { required: 'Bed is required' })}
+                          disabled={!!editingStudent}
                           onChange={(e) => {
                             const value = e.target.value
                             setValue('bedNumber', value, { shouldValidate: true })
@@ -623,7 +625,10 @@ export default function StudentsPage() {
                             </option>
                           ))}
                         </Select>
-                        {availableBeds.length === 0 && (
+                        {!!editingStudent && (
+                          <p className="text-xs text-secondary mt-1">Room and bed cannot be changed after admission. Please checkout and re-admit if needed.</p>
+                        )}
+                        {availableBeds.length === 0 && !editingStudent && (
                           <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
                             <p className="text-sm text-warning flex items-center gap-2">
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -642,13 +647,14 @@ export default function StudentsPage() {
                         placeholder="Enter bed number"
                         className="h-10"
                         {...register('bedNumber')}
+                        disabled={!!editingStudent}
                       />
                     ) : (
                       <Input
                         id="bedNumber"
                         type="text"
                         placeholder="Select a room first"
-                        disabled
+                        disabled={!!editingStudent || true}
                         className="h-10"
                         {...register('bedNumber')}
                       />
@@ -663,6 +669,7 @@ export default function StudentsPage() {
                       id="joiningDate"
                       type="date"
                       {...register('joiningDate')}
+                      disabled={!!editingStudent}
                     />
                     {errors.joiningDate && (
                       <p className="text-sm text-danger">{errors.joiningDate.message}</p>
@@ -676,40 +683,45 @@ export default function StudentsPage() {
                       min="0"
                       step="0.01"
                       {...register('monthlyRent')}
+                      disabled={!!editingStudent}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="securityDeposit">Security Deposit (BDT)</Label>
-                    <Input
-                      id="securityDeposit"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      {...register('securityDeposit')}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="unionFee">Union Fee (BDT)</Label>
-                    <Input
-                      id="unionFee"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="One-time non-refundable fee"
-                      {...register('unionFee')}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="initialRentPaid">Initial Rent Paid (BDT)</Label>
-                    <Input
-                      id="initialRentPaid"
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      placeholder="Amount paid today for rent"
-                      {...register('initialRentPaid')}
-                    />
-                  </div>
+                  {!editingStudent && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="securityDeposit">Security Deposit (BDT)</Label>
+                        <Input
+                          id="securityDeposit"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          {...register('securityDeposit')}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="unionFee">Union Fee (BDT)</Label>
+                        <Input
+                          id="unionFee"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="One-time non-refundable fee"
+                          {...register('unionFee')}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="initialRentPaid">Initial Rent Paid (BDT)</Label>
+                        <Input
+                          id="initialRentPaid"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Amount paid today for rent"
+                          {...register('initialRentPaid')}
+                        />
+                      </div>
+                    </>
+                  )}
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
