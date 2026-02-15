@@ -4,21 +4,21 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/ui/table'
 import api from '@/lib/api'
 import { cn } from '@/lib/utils'
@@ -100,6 +100,10 @@ export default function AuditLogsPage() {
             <option value="restore">Restore</option>
             <option value="payment">Payment</option>
             <option value="login">Login</option>
+            <option value="logout">Logout</option>
+            <option value="reactivate">Reactivate</option>
+            <option value="use_security_deposit">Use Security Deposit</option>
+            <option value="return_security_deposit">Return Security Deposit</option>
           </Select>
           <Select 
             value={entityFilter} 
@@ -161,6 +165,8 @@ export default function AuditLogsPage() {
                           log.action === 'create' ? "bg-green-100 text-green-700" :
                           log.action === 'update' ? "bg-blue-100 text-blue-700" :
                           log.action === 'delete' ? "bg-red-100 text-red-700" :
+                          log.action === 'login' ? "bg-indigo-100 text-indigo-700" :
+                          log.action === 'logout' ? "bg-orange-100 text-orange-700" :
                           "bg-gray-100 text-gray-700"
                         )}>
                           {log.action}

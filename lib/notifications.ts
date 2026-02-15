@@ -1,4 +1,4 @@
-export type NotificationType = 'payment' | 'due' | 'student' | 'room' | 'coaching' | 'system'
+export type NotificationType = 'payment' | 'due' | 'student' | 'room' | 'coaching' | 'system' | 'login' | 'logout'
 
 export interface Notification {
   id: string
