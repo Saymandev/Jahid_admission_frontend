@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { MobileMenu } from '@/components/ui/mobile-menu'
 import { NotificationBell } from '@/components/ui/notification-bell'
 import { Sidebar } from '@/components/ui/sidebar'
+import api from '@/lib/api'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
 import Link from 'next/link'
@@ -41,19 +42,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }
 
-      const navLinks = [
-        { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-        { href: '/dashboard/rooms', label: 'Rooms', icon: '🏠' },
-        { href: '/dashboard/students', label: 'Students', icon: '👥' },
-        { href: '/dashboard/coaching', label: 'Coaching', icon: '📚' },
-        ...(user?.role === 'admin' ? [
-          { href: '/dashboard/transactions', label: 'Transactions', icon: '💳' },
-          { href: '/dashboard/users', label: 'Users', icon: '👤' },
-          { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: '📝' },
-          { href: '/dashboard/archive', label: 'Archive', icon: '📦' },
-          { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
-        ] : []),
-      ]
+  const allNavLinks = [
+    { href: '/dashboard', label: 'Dashboard', icon: '📊' },
+    { href: '/dashboard/rooms', label: 'Rooms', icon: '🏠' },
+    { href: '/dashboard/students', label: 'Students', icon: '👥' },
+    { href: '/dashboard/coaching', label: 'Coaching', icon: '📚' },
+    { href: '/dashboard/transactions', label: 'Transactions', icon: '💳', adminOnly: true },
+    { href: '/dashboard/users', label: 'Users', icon: '👤', adminOnly: true },
+    { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: '📝', adminOnly: true },
+    { href: '/dashboard/archive', label: 'Archive', icon: '📦', adminOnly: true },
+    { href: '/dashboard/settings', label: 'Settings', icon: '⚙️', adminOnly: true },
+  ]
+
+  const navLinks = allNavLinks.filter(link => !link.adminOnly || user?.role === 'admin')
 
   return (
     <div className="min-h-screen bg-background">
