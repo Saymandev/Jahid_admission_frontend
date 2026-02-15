@@ -74,8 +74,6 @@ export default function CoachingPage() {
 
   const [createNewCourse, setCreateNewCourse] = useState(false)
   const [createNewBatch, setCreateNewBatch] = useState(false)
-  const [newCourseValue, setNewCourseValue] = useState('')
-  const [newBatchValue, setNewBatchValue] = useState('')
   const [showManageCourses, setShowManageCourses] = useState(false)
   const [showManageBatches, setShowManageBatches] = useState(false)
   const [page, setPage] = useState(1)
@@ -195,8 +193,6 @@ export default function CoachingPage() {
       resetAdmission()
       setCreateNewCourse(false)
       setCreateNewBatch(false)
-      setNewCourseValue('')
-      setNewBatchValue('')
       showToast('Admission created successfully!', 'success')
     },
     onError: (error: any) => {
@@ -803,6 +799,8 @@ export default function CoachingPage() {
             setShowAdmissionForm(false)
             setEditingAdmission(null)
             resetAdmission()
+            setCreateNewCourse(false)
+            setCreateNewBatch(false)
           }
         }}>
           <DialogContent className="max-w-2xl">
@@ -830,19 +828,61 @@ export default function CoachingPage() {
                   <Input id="guardianPhone" {...registerAdmission('guardianPhone')} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="course">Course *</Label>
-                  <Select id="course" {...registerAdmission('course')} disabled={!!editingAdmission}>
-                    <option value="">Select Course</option>
-                    {uniqueCourses.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                  </Select>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="course">Course *</Label>
+                    {!editingAdmission && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => setCreateNewCourse(!createNewCourse)}
+                      >
+                        {createNewCourse ? 'Select Existing' : 'Add New'}
+                      </Button>
+                    )}
+                  </div>
+                  {createNewCourse && !editingAdmission ? (
+                    <Input
+                      id="course"
+                      placeholder="Enter new course name"
+                      {...registerAdmission('course')}
+                    />
+                  ) : (
+                    <Select id="course" {...registerAdmission('course')} disabled={!!editingAdmission}>
+                      <option value="">Select Course</option>
+                      {uniqueCourses.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    </Select>
+                  )}
                   {admissionErrors.course && <p className="text-xs text-danger mt-1">{admissionErrors.course.message}</p>}
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="batch">Batch *</Label>
-                  <Select id="batch" {...registerAdmission('batch')} disabled={!!editingAdmission}>
-                    <option value="">Select Batch</option>
-                    {uniqueBatches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
-                  </Select>
+                  <div className="flex justify-between items-center">
+                    <Label htmlFor="batch">Batch *</Label>
+                    {!editingAdmission && (
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => setCreateNewBatch(!createNewBatch)}
+                      >
+                        {createNewBatch ? 'Select Existing' : 'Add New'}
+                      </Button>
+                    )}
+                  </div>
+                  {createNewBatch && !editingAdmission ? (
+                    <Input
+                      id="batch"
+                      placeholder="Enter new batch name"
+                      {...registerAdmission('batch')}
+                    />
+                  ) : (
+                    <Select id="batch" {...registerAdmission('batch')} disabled={!!editingAdmission}>
+                      <option value="">Select Batch</option>
+                      {uniqueBatches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
+                    </Select>
+                  )}
                   {admissionErrors.batch && <p className="text-xs text-danger mt-1">{admissionErrors.batch.message}</p>}
                 </div>
                 <div className="space-y-2">
