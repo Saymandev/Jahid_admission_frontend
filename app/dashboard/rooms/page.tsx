@@ -4,8 +4,22 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProtectedRoute } from '@/components/protected-route'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
 import api from '@/lib/api'
 import { maskCurrency } from '@/lib/mask-value'
 import { showToast } from '@/lib/toast'
@@ -74,6 +88,7 @@ export default function RoomsPage() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [pendingRentData, setPendingRentData] = useState<RentFormData | null>(null)
   const [selectedBed, setSelectedBed] = useState<{ roomId: string; bedName: string; bedPrice: number } | null>(null)
+  const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
   const pageSize = 10
@@ -320,7 +335,7 @@ export default function RoomsPage() {
                     {errors.totalBeds && (
                       <p className="text-sm text-danger">{errors.totalBeds.message}</p>
                     )}
-                    <p className="text-xs text-secondary">We'll automatically name them Bed 1, Bed 2, etc.</p>
+                    <p className="text-xs text-secondary">We&apos;ll automatically name them Bed 1, Bed 2, etc.</p>
                   </div>
                 </div>
 
@@ -507,164 +522,100 @@ export default function RoomsPage() {
           </div>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {rooms.length === 0 ? (
-            <Card className="col-span-full border-2 border-dashed">
-              <CardContent className="p-12 text-center">
-                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
-                  <svg className="w-10 h-10 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">
-                  {searchQuery ? 'No rooms found' : 'No rooms yet'}
-                </h3>
-                <p className="text-secondary text-sm mb-4">
-                  {searchQuery
-                    ? 'Try adjusting your search criteria'
-                    : 'Get started by adding your first room'}
-                </p>
-                {!searchQuery && isAdmin && (
-                  <Button onClick={() => setShowForm(true)}>
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Your First Room
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            rooms.map((room: Room) => (
-              <Card key={room._id} className="hover:shadow-lg transition-all duration-200 border-2 hover:border-primary/20">
-                <CardHeader className="pb-3">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                      </svg>
-                    </div>
-                    {room.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <span className="text-xs text-secondary flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-card rounded-xl border shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/50 font-bold uppercase text-[10px] tracking-wider text-secondary">
+                <TableRow>
+                  <TableHead className="w-[150px]">Room Name</TableHead>
+                  <TableHead className="w-[100px]">Floor</TableHead>
+                  <TableHead className="text-center w-[150px]">Occupancy</TableHead>
+                  <TableHead className="w-[150px]">Rent/Bed</TableHead>
+                  <TableHead className="w-[120px]">Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rooms.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-64 text-center text-secondary">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        <svg className="w-12 h-12 opacity-20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
                         </svg>
-                        Floor
-                      </span>
-                      <p className="text-sm font-semibold">{room.floor || 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs text-secondary flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                        </svg>
-                        Beds
-                      </span>
-                      <p className="text-sm font-semibold">
-                        <span className={cn(
-                          room.occupiedBeds === room.totalBeds ? 'text-danger' : 'text-success'
-                        )}>
-                          {room.occupiedBeds}
-                        </span>
-                        <span className="text-secondary"> / {room.totalBeds}</span>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-xs text-secondary flex items-center gap-1">
-                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                      </svg>
-                      Avg. Rent
-                    </span>
-                    <p className="text-lg font-bold text-primary">
-                      {maskCurrency(room.monthlyRentPerBed, user?.role === 'staff')}
-                    </p>
-                  </div>
-
-                  {/* Beds List */}
-                  {room.beds && room.beds.length > 0 ? (
-                    <div className="space-y-2 pt-3 border-t">
-                      <Label className="text-sm font-semibold flex items-center gap-2">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        Beds
-                      </Label>
-                      <div className="space-y-2">
-                        {room.beds.map((bed, index) => (
-                          <div
-                            key={index}
-                            className={cn(
-                              'flex items-center justify-between p-3 rounded-lg border transition-all',
-                              bed.isOccupied
-                                ? 'bg-secondary/30 border-secondary/50'
-                                : 'bg-success/5 border-success/20 hover:bg-success/10 hover:border-success/30'
-                            )}
-                          >
-                            <div className="flex items-center gap-3 flex-1">
-                              <div className={cn(
-                                'w-10 h-10 rounded-lg flex items-center justify-center font-bold text-sm',
-                                bed.isOccupied
-                                  ? 'bg-secondary/50 text-secondary-foreground'
-                                  : 'bg-success/20 text-success'
-                              )}>
-                                {bed.name.split(' ')[1] || bed.name.charAt(bed.name.length - 1)}
-                              </div>
-                              <div>
-                                <p className="font-semibold text-sm">{bed.name}</p>
-                                <p className="text-xs text-secondary">
-                                  {maskCurrency(bed.price, user?.role === 'staff')}
-                                </p>
-                              </div>
-                            </div>
-                            {bed.isOccupied ? (
-                              <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-danger/10 text-danger border border-danger/20">
-                                Occupied
-                              </span>
-                            ) : (
-                              <Button
-                                size="sm"
-                                className="h-8 px-4 text-xs font-medium"
-                                onClick={() => handleRentBed(room._id, bed.name, bed.price)}
-                                disabled={!isAdmin && !isStaff}
-                              >
-                                Rent
-                              </Button>
-                            )}
-                          </div>
-                        ))}
+                        <p>No rooms found</p>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="pt-3 border-t">
-                      <p className="text-xs text-secondary text-center py-2">No bed details available</p>
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-between pt-2 border-t">
-                    <span className="text-xs text-secondary">Status</span>
-                    <span
-                      className={cn(
-                        'text-xs font-semibold px-3 py-1.5 rounded-full',
-                        room.status === 'available'
-                          ? 'bg-success/10 text-success border border-success/20'
-                          : 'bg-danger/10 text-danger border border-danger/20'
-                      )}
-                    >
-                      {room.status === 'available' ? '✓ Available' : '✕ Full'}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  rooms.map((room) => (
+                    <TableRow key={room._id} className="hover:bg-muted/30 transition-colors group">
+                      <TableCell className="font-semibold">{room.name}</TableCell>
+                      <TableCell>{room.floor || 'N/A'}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-col items-center gap-1.5">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold">{room.occupiedBeds}</span>
+                            <span className="text-[10px] text-secondary">/</span>
+                            <span className="text-xs text-secondary">{room.totalBeds}</span>
+                          </div>
+                          <div className="w-20 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div 
+                              className={cn(
+                                "h-full transition-all duration-500",
+                                room.occupiedBeds === room.totalBeds ? "bg-danger" : "bg-primary"
+                              )}
+                              style={{ width: `${(room.occupiedBeds / room.totalBeds) * 100}%` }}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {maskCurrency(room.monthlyRentPerBed, user?.role === 'staff')}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            'text-[10px] uppercase font-bold px-2 py-0.5 rounded-full border',
+                            room.status === 'available'
+                              ? 'bg-success/10 text-success border-success/30'
+                              : 'bg-danger/10 text-danger border-danger/30'
+                          )}
+                        >
+                          {room.status === 'available' ? 'Available' : 'Full'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 px-3 text-xs"
+                            onClick={() => setSelectedRoom(room)}
+                          >
+                            Details
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="h-8 px-3 text-xs"
+                            onClick={() => {
+                              const availableBed = room.beds?.find(b => !b.isOccupied);
+                              if (availableBed) {
+                                handleRentBed(room._id, availableBed.name, availableBed.price);
+                              }
+                            }}
+                            disabled={(!isAdmin && !isStaff) || room.status === 'full'}
+                          >
+                            Rent
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </div>
 
         {totalPages > 1 && (
@@ -698,6 +649,87 @@ export default function RoomsPage() {
             </div>
           </div>
         )}
+
+        {/* Room Details / Rent Modal */}
+        <Dialog open={!!selectedRoom} onOpenChange={(open) => !open && setSelectedRoom(null)}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                Room {selectedRoom?.name}
+                <span className="text-xs font-normal text-secondary">(Floor {selectedRoom?.floor || 'N/A'})</span>
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted/30 p-3 rounded-lg flex flex-col items-center justify-center border">
+                  <span className="text-[10px] uppercase font-bold text-secondary mb-1">Rent per Bed</span>
+                  <span className="text-lg font-bold text-primary">
+                    {selectedRoom ? maskCurrency(selectedRoom.monthlyRentPerBed, user?.role === 'staff') : '-'}
+                  </span>
+                </div>
+                <div className="bg-muted/30 p-3 rounded-lg flex flex-col items-center justify-center border">
+                  <span className="text-[10px] uppercase font-bold text-secondary mb-1">Available</span>
+                  <span className="text-lg font-bold">
+                    {selectedRoom?.beds?.filter(b => !b.isOccupied).length} / {selectedRoom?.totalBeds}
+                  </span>
+                </div>
+              </div>
+              
+              <div className="space-y-3">
+                <Label className="text-sm font-bold">Bed Appointments</Label>
+                <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2">
+                  {selectedRoom?.beds?.map((bed, idx) => (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-lg border transition-colors",
+                        bed.isOccupied 
+                          ? "bg-secondary/5 border-secondary/20" 
+                          : "bg-success/5 border-success/20 hover:bg-success/10"
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={cn(
+                          "w-8 h-8 rounded-md flex items-center justify-center font-bold text-xs",
+                          bed.isOccupied ? "bg-secondary/20 text-secondary" : "bg-success/20 text-success"
+                        )}>
+                          {bed.name.split(' ').pop()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold">{bed.name}</p>
+                          <p className="text-[10px] text-secondary">{maskCurrency(bed.price, user?.role === 'staff')}</p>
+                        </div>
+                      </div>
+                      
+                      {bed.isOccupied ? (
+                        <span className="text-[10px] font-bold text-danger uppercase">Occupied</span>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="h-7 px-3 text-[10px] font-bold uppercase"
+                          onClick={() => {
+                            handleRentBed(selectedRoom._id, bed.name, bed.price);
+                            setSelectedRoom(null);
+                          }}
+                          disabled={!isAdmin && !isStaff}
+                        >
+                          Rent
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {(!selectedRoom?.beds || selectedRoom.beds.length === 0) && (
+                     <p className="text-center text-sm text-secondary py-4">No beds defined for this room</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <Button variant="ghost" onClick={() => setSelectedRoom(null)}>Close</Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <ConfirmDialog

@@ -6,6 +6,12 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
@@ -790,7 +796,7 @@ export default function StudentDetailPage() {
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-medium">BDT</span>
                     </div>
                     <p className="text-xs text-secondary italic">
-                      This amount will be recorded as a 'refund' transaction in the ledger.
+                      This amount will be recorded as a &apos;refund&apos; transaction in the ledger.
                     </p>
                   </div>
 
@@ -961,139 +967,10 @@ export default function StudentDetailPage() {
           <CardHeader>
             <div className="flex justify-between items-center">
               <CardTitle>Payment History (Calendar View)</CardTitle>
-              <Button onClick={() => setShowPaymentForm(!showPaymentForm)}>
-                {showPaymentForm ? 'Cancel' : 'Add Payment'}
-              </Button>
+              {/* Button triggering Payment Modal is now handled by clicking on a month in Calendar or similar action */}
             </div>
           </CardHeader>
           <CardContent>
-            {showPaymentForm && (
-              <div className="mb-6 p-4 border border-border rounded-md">
-                <form onSubmit={handleSubmit(onPaymentSubmit)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="rentAmount">Rent Amount (BDT)</Label>
-                      <Input
-                        id="rentAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Enter rent amount"
-                        {...register('rentAmount')}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="securityAmount">Security Deposit (BDT)</Label>
-                      <Input
-                        id="securityAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Enter security deposit"
-                        {...register('securityAmount')}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="unionFeeAmount">Union Fee (BDT)</Label>
-                      <Input
-                        id="unionFeeAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Enter union fee"
-                        {...register('unionFeeAmount')}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="otherAmount">Other Fee (BDT)</Label>
-                      <Input
-                        id="otherAmount"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Enter other fees"
-                        {...register('otherAmount')}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-2">
-                    <div className="flex items-center gap-2 mb-4 p-3 bg-primary/5 rounded-md">
-                      <input
-                        type="checkbox"
-                        id="isAdvance"
-                        {...register('isAdvance')}
-                        className="w-4 h-4"
-                      />
-                      <Label htmlFor="isAdvance" className="cursor-pointer font-medium">
-                        Record Rent as Advance Payment (for future months)
-                      </Label>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="billingMonth">
-                          {watch('isAdvance') ? 'Reference Month (Optional)' : 'Billing Month (for Rent) *'}
-                        </Label>
-                        <Input
-                          id="billingMonth"
-                          type="month"
-                          {...register('billingMonth')}
-                          disabled={watch('isAdvance')}
-                          min={student?.joiningDate ? new Date(student.joiningDate).toISOString().slice(0, 7) : undefined}
-                        />
-                        {watch('isAdvance') && (
-                          <p className="text-xs text-secondary">
-                            Advance rent will be applied to future months automatically
-                          </p>
-                        )}
-                        {errors.billingMonth && (
-                          <p className="text-sm text-danger">{errors.billingMonth.message}</p>
-                        )}
-                        {errors.rentAmount && (
-                          <p className="text-sm text-danger">{errors.rentAmount.message}</p>
-                        )}
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="paymentMethod">Payment Method *</Label>
-                        <Select
-                          id="paymentMethod"
-                          {...register('paymentMethod')}
-                        >
-                          <option value="cash">Cash</option>
-                          <option value="bkash">Bkash</option>
-                          <option value="bank">Bank</option>
-                        </Select>
-                        {errors.paymentMethod && (
-                          <p className="text-sm text-danger">{errors.paymentMethod.message}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="transactionId">Transaction ID</Label>
-                        <Input
-                          id="transactionId"
-                          {...register('transactionId')}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="notes">Notes</Label>
-                        <Input
-                          id="notes"
-                          {...register('notes')}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                  <Button type="submit" className="mt-4" disabled={paymentMutation.isPending}>
-                    {paymentMutation.isPending ? 'Processing...' : 'Record Payment'}
-                  </Button>
-                </form>
-              </div>
-            )}
-
             {dueStatus && (
               <>
                 <PaymentCalendar
@@ -1104,7 +981,103 @@ export default function StudentDetailPage() {
                   selectedMonth={new Date(selectedBillingMonth + '-01')}
                   onMonthSelect={handleMonthSelect}
                 />
+            {/* Payment Modal */}
+        <Dialog open={showPaymentForm} onOpenChange={setShowPaymentForm}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Add Payment for {new Date(selectedBillingMonth + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit(onPaymentSubmit)} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="rentAmount">Rent Amount (BDT)</Label>
+                  <Input
+                    id="rentAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter rent amount"
+                    {...register('rentAmount')}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="securityAmount">Security Deposit (BDT)</Label>
+                  <Input
+                    id="securityAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter security deposit"
+                    {...register('securityAmount')}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="unionFeeAmount">Union Fee (BDT)</Label>
+                  <Input
+                    id="unionFeeAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter union fee"
+                    {...register('unionFeeAmount')}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="otherAmount">Other Fee (BDT)</Label>
+                  <Input
+                    id="otherAmount"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    placeholder="Enter other fees"
+                    {...register('otherAmount')}
+                  />
+                </div>
+              </div>
 
+               <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="paymentMethod">Payment Method</Label>
+                    <Select
+                      onChange={(e) => setValue('paymentMethod', e.target.value as any)}
+                      value={watch('paymentMethod')}
+                    >
+                      <option value="cash">Cash</option>
+                      <option value="bkash">bKash</option>
+                      <option value="bank">Bank Transfer</option>
+                    </Select>
+                  </div>
+                  {watch('paymentMethod') !== 'cash' && (
+                    <div className="space-y-2">
+                      <Label htmlFor="transactionId">Transaction ID</Label>
+                      <Input
+                        id="transactionId"
+                        placeholder="Enter transaction ID"
+                        {...register('transactionId')}
+                      />
+                    </div>
+                  )}
+              </div>
+              <div className="space-y-2">
+                  <Label htmlFor="notes">Notes</Label>
+                  <Input
+                    id="notes"
+                    placeholder="Optional notes"
+                    {...register('notes')}
+                  />
+              </div>
+
+              <div className="flex justify-end gap-2">
+                  <Button type="button" variant="ghost" onClick={() => setShowPaymentForm(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    Review Payment
+                  </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
                 {/* Fees & Extra Transactions */}
                 {dueStatus.extraPayments && dueStatus.extraPayments.length > 0 && (
                   <div className="mt-6 space-y-4">
@@ -1305,7 +1278,7 @@ export default function StudentDetailPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+      {/* Rest of components moved inside the div above */}
       <ConfirmDialog
         open={isDeleteDialogOpen}
         onOpenChange={setIsDeleteDialogOpen}
@@ -1394,11 +1367,11 @@ export default function StudentDetailPage() {
                  )}
                </div>
 
-               {pendingPaymentData?.notes && (
-                  <div className="text-sm p-3 bg-muted/30 rounded border text-secondary italic">
-                    "{pendingPaymentData.notes}"
-                  </div>
-               )}
+                {pendingPaymentData?.notes && (
+                   <div className="text-sm p-3 bg-muted/30 rounded border text-secondary italic">
+                     &quot;{pendingPaymentData.notes}&quot;
+                   </div>
+                )}
 
               <div className="flex gap-3 p-3 bg-blue-50 text-blue-800 rounded text-sm border border-blue-100 items-start">
                  <span className="text-lg leading-none">ℹ️</span>
@@ -1409,7 +1382,7 @@ export default function StudentDetailPage() {
           confirmText="Confirm & Record Payment"
           isLoading={paymentMutation.isPending}
         />
+      </div>
     </ProtectedRoute>
-
   )
 }

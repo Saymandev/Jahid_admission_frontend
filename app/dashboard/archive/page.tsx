@@ -113,7 +113,7 @@ export default function ArchivePage() {
   if (user?.role !== 'admin') {
     return (
       <ProtectedRoute>
-        <div className="p-6">You don't have permission to access the archive.</div>
+        <div className="p-6">You don&apos;t have permission to access the archive.</div>
       </ProtectedRoute>
     )
   }
@@ -269,7 +269,7 @@ export default function ArchivePage() {
                         <p className="text-xs text-secondary mt-1">
                           Deleted: {txn.deletedAt ? new Date(txn.deletedAt).toLocaleDateString() : 'Unknown'}
                         </p>
-                        {txn.notes && <p className="text-xs text-secondary italic">"{txn.notes}"</p>}
+                        {txn.notes && <p className="text-xs text-secondary italic">&quot;{txn.notes}&quot;</p>}
                       </div>
                       <Button variant="outline" size="sm" onClick={() => handleRestore(txn._id, 'payment')}>
                         Restore

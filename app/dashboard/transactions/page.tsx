@@ -194,7 +194,7 @@ export default function TransactionsPage() {
   if (!isAdmin) {
     return (
       <ProtectedRoute>
-        <div className="p-6">You don't have permission to access this page.</div>
+        <div className="p-6">You don&apos;t have permission to access this page.</div>
       </ProtectedRoute>
     )
   }

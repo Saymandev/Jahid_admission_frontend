@@ -8,11 +8,11 @@ import { Label } from '@/components/ui/label'
 import api from '@/lib/api'
 import { showToast } from '@/lib/toast'
 import { useAuthStore } from '@/store/auth-store'
+import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 
 const changePasswordSchema = z.object({
@@ -169,7 +169,7 @@ export default function SettingsPage() {
                 </form>
               ) : (
                 <p className="text-secondary text-sm">
-                  Click "Change Password" to update your password.
+                  Click &quot;Change Password&quot; to update your password.
                 </p>
               )}
             </CardContent>

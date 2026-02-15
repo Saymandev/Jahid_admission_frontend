@@ -1,0 +1,49 @@
+
+> accounting-management-frontend@1.0.0 lint
+> next lint
+
+
+./app/dashboard/archive/page.tsx
+116:37  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+272:84  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+272:96  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./app/dashboard/coaching/page.tsx
+127:9  Warning: The 'admissions' logical expression could make the dependencies of useMemo Hook (at line 359) change on every render. To fix this, wrap the initialization of 'admissions' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+127:9  Warning: The 'admissions' logical expression could make the dependencies of useMemo Hook (at line 372) change on every render. To fix this, wrap the initialization of 'admissions' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+
+./app/dashboard/rooms/page.tsx
+330:61  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+
+./app/dashboard/search/page.tsx
+77:9  Warning: The 'rooms' logical expression could make the dependencies of useMemo Hook (at line 173) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'rooms' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+78:9  Warning: The 'students' logical expression could make the dependencies of useMemo Hook (at line 173) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'students' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+79:9  Warning: The 'transactions' logical expression could make the dependencies of useMemo Hook (at line 173) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'transactions' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+80:9  Warning: The 'coaching' logical expression could make the dependencies of useMemo Hook (at line 173) change on every render. Move it inside the useMemo callback. Alternatively, wrap the initialization of 'coaching' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+204:92  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+204:100  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./app/dashboard/settings/page.tsx
+172:25  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+172:41  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./app/dashboard/students/page.tsx
+102:9  Warning: The 'rooms' logical expression could make the dependencies of useMemo Hook (at line 110) change on every render. To fix this, wrap the initialization of 'rooms' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+
+./app/dashboard/students/[id]/page.tsx
+799:57  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+799:64  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+1372:21  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+1372:48  Error: `"` can be escaped with `&quot;`, `&ldquo;`, `&#34;`, `&rdquo;`.  react/no-unescaped-entities
+
+./app/dashboard/transactions/page.tsx
+166:9  Warning: The 'usersForFilter' logical expression could make the dependencies of useMemo Hook (at line 171) change on every render. To fix this, wrap the initialization of 'usersForFilter' in its own useMemo() Hook.  react-hooks/exhaustive-deps
+197:37  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+
+./app/dashboard/users/page.tsx
+115:37  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+
+./components/ui/notification-panel.tsx
+199:20  Error: `'` can be escaped with `&apos;`, `&lsquo;`, `&#39;`, `&rsquo;`.  react/no-unescaped-entities
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules

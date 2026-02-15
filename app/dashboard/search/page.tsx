@@ -1,14 +1,14 @@
 'use client'
 
 import { ProtectedRoute } from '@/components/protected-route'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { useQuery } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import api from '@/lib/api'
+import { cn } from '@/lib/utils'
+import { useQuery } from '@tanstack/react-query'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import Link from 'next/link'
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 
 interface SearchResult {
   type: 'room' | 'student' | 'transaction' | 'coaching'
@@ -201,7 +201,7 @@ export default function SearchPage() {
         <div>
           <h1 className="text-3xl font-bold">Search Results</h1>
           <p className="text-secondary mt-1">
-            Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{query}"
+            Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for &quot;{query}&quot;
           </p>
         </div>
 

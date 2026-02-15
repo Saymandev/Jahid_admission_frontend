@@ -1,20 +1,20 @@
 'use client'
 
 import { ProtectedRoute } from '@/components/protected-route'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import { showToast } from '@/lib/toast'
+import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { cn } from '@/lib/utils'
 
 const userSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -112,7 +112,7 @@ export default function UsersPage() {
   if (user?.role !== 'admin') {
     return (
       <ProtectedRoute>
-        <div className="p-6">You don't have permission to access this page.</div>
+        <div className="p-6">You don&apos;t have permission to access this page.</div>
       </ProtectedRoute>
     )
   }

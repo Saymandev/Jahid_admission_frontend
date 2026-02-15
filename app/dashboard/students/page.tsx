@@ -4,6 +4,7 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { QuickPaymentModal } from '@/components/quick-payment-modal'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select } from '@/components/ui/select'
@@ -331,18 +332,133 @@ export default function StudentsPage() {
           </Select>
         </div>
 
-        {showForm && (
-          <Card className="border-2">
-            <CardHeader className="bg-primary/5 border-b">
-              <CardTitle className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add New Student
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+
+
+        <div className="space-y-4">
+          {students.length === 0 ? (
+            <Card>
+              <CardContent className="p-12 text-center">
+                <div className="text-6xl mb-4">📭</div>
+                <h3 className="text-lg font-semibold mb-2">
+                  {searchQuery || statusFilter !== 'all'
+                    ? 'No students found'
+                    : 'No students yet'}
+                </h3>
+                <p className="text-secondary text-sm">
+                  {searchQuery || statusFilter !== 'all'
+                    ? 'Try adjusting your search or filter criteria'
+                    : 'Get started by adding your first student'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            students.map((student: Student) => (
+              <Card key={student._id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="flex items-center gap-2">
+                        <span>👤</span>
+                        {student.name}
+                      </CardTitle>
+                      <p className="text-sm text-secondary mt-1">ID: {student.studentId}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedStudentForPayment(student)
+                          setIsPaymentModalOpen(true)
+                        }}
+                      >
+                        ⚡ Quick Rent
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/students/${student._id}`)}
+                      >
+                        View Details →
+                      </Button>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div>
+                      <span className="text-secondary block mb-1">Room</span>
+                      <span className="font-medium">🏠 {student.roomId?.name} (Bed {student.bedNumber})</span>
+                    </div>
+                    <div>
+                      <span className="text-secondary block mb-1">Phone</span>
+                      <span className="font-medium">📞 {student.phone}</span>
+                    </div>
+                    <div>
+                      <span className="text-secondary block mb-1">Monthly Rent</span>
+                      <span className="font-medium">💰 {student.monthlyRent.toLocaleString()} BDT</span>
+                    </div>
+                    <div>
+                      <span className="text-secondary block mb-1">Status</span>
+                      <span
+                        className={cn(
+                          'font-medium px-2 py-1 rounded text-xs',
+                          student.status === 'active'
+                            ? 'bg-success/10 text-success'
+                            : 'bg-secondary/10 text-secondary'
+                        )}
+                      >
+                        {student.status === 'active' ? '✓ Active' : 'Left'}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
+
+        {/* Pagination */}
+        {/* ... pagination ... */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between pt-4 border-t">
+            <p className="text-sm text-secondary">
+              Page {page} of {totalPages} ({totalStudents} total)
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setPage((p) => Math.max(1, p - 1))
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                disabled={page === 1}
+              >
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setPage((p) => Math.min(totalPages, p + 1))
+                  window.scrollTo({ top: 0, behavior: 'smooth' })
+                }}
+                disabled={page === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Add Student Modal */}
+        <Dialog open={showForm} onOpenChange={setShowForm}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Add New Student</DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="name">Name *</Label>
@@ -553,11 +669,18 @@ export default function StudentsPage() {
                     />
                   </div>
                 </div>
-                <div className="flex gap-3 pt-4">
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowForm(false)}
+                  >
+                    Cancel
+                  </Button>
                   <Button
                     type="submit"
                     disabled={createMutation.isPending}
-                    className="flex-1 h-11 font-semibold"
+                    className="h-10 font-semibold"
                   >
                     {createMutation.isPending ? (
                       <>
@@ -578,126 +701,9 @@ export default function StudentsPage() {
                   </Button>
                 </div>
               </form>
-            </CardContent>
-          </Card>
-        )}
+          </DialogContent>
+        </Dialog>
 
-        <div className="space-y-4">
-          {students.length === 0 ? (
-            <Card>
-              <CardContent className="p-12 text-center">
-                <div className="text-6xl mb-4">📭</div>
-                <h3 className="text-lg font-semibold mb-2">
-                  {searchQuery || statusFilter !== 'all'
-                    ? 'No students found'
-                    : 'No students yet'}
-                </h3>
-                <p className="text-secondary text-sm">
-                  {searchQuery || statusFilter !== 'all'
-                    ? 'Try adjusting your search or filter criteria'
-                    : 'Get started by adding your first student'}
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            students.map((student: Student) => (
-              <Card key={student._id} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle className="flex items-center gap-2">
-                        <span>👤</span>
-                        {student.name}
-                      </CardTitle>
-                      <p className="text-sm text-secondary mt-1">ID: {student.studentId}</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedStudentForPayment(student)
-                          setIsPaymentModalOpen(true)
-                        }}
-                      >
-                        ⚡ Quick Rent
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/students/${student._id}`)}
-                      >
-                        View Details →
-                      </Button>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                    <div>
-                      <span className="text-secondary block mb-1">Room</span>
-                      <span className="font-medium">🏠 {student.roomId?.name} (Bed {student.bedNumber})</span>
-                    </div>
-                    <div>
-                      <span className="text-secondary block mb-1">Phone</span>
-                      <span className="font-medium">📞 {student.phone}</span>
-                    </div>
-                    <div>
-                      <span className="text-secondary block mb-1">Monthly Rent</span>
-                      <span className="font-medium">💰 {student.monthlyRent.toLocaleString()} BDT</span>
-                    </div>
-                    <div>
-                      <span className="text-secondary block mb-1">Status</span>
-                      <span
-                        className={cn(
-                          'font-medium px-2 py-1 rounded text-xs',
-                          student.status === 'active'
-                            ? 'bg-success/10 text-success'
-                            : 'bg-secondary/10 text-secondary'
-                        )}
-                      >
-                        {student.status === 'active' ? '✓ Active' : 'Left'}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </div>
-
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between pt-4 border-t">
-            <p className="text-sm text-secondary">
-              Page {page} of {totalPages} ({totalStudents} total)
-            </p>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setPage((p) => Math.max(1, p - 1))
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                disabled={page === 1}
-              >
-                Previous
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setPage((p) => Math.min(totalPages, p + 1))
-                  window.scrollTo({ top: 0, behavior: 'smooth' })
-                }}
-                disabled={page === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          </div>
-        )}
         {/* Quick Payment Modal */}
         <QuickPaymentModal
           student={selectedStudentForPayment}

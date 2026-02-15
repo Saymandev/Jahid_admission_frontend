@@ -196,7 +196,7 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
               <div className="text-6xl mb-4">🔔</div>
               <h3 className="text-lg font-semibold mb-2">No notifications</h3>
               <p className="text-sm text-secondary">
-                You're all caught up! New notifications will appear here.
+                You&apos;re all caught up! New notifications will appear here.
               </p>
             </div>
           ) : (
