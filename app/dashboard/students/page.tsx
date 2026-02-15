@@ -269,8 +269,23 @@ export default function StudentsPage() {
   })
 
   const onSubmit = async (data: StudentFormData) => {
-    const bedNum = parseInt(data.bedNumber)
-    const isNumericBed = !isNaN(bedNum)
+    // Determine if we should send bedNumber or bedName based on the room type
+    // If the room has beds defined (length > 0), we selected from a dropdown, so send bedName
+    // If the room has NO beds defined, we entered a number manually, so send bedNumber
+    
+    let bedName: string | undefined = undefined
+    let bedNumber: number | undefined = undefined
+
+    if (selectedRoom && selectedRoom.beds && selectedRoom.beds.length > 0) {
+      // Dropdown selection (even if the name looks like a number like "1", treat as name)
+      bedName = data.bedNumber
+    } else {
+      // Manual input (must be a number)
+      const parsed = parseInt(data.bedNumber)
+      if (!isNaN(parsed)) {
+        bedNumber = parsed
+      }
+    }
 
     const payload = {
       ...data,
@@ -278,8 +293,8 @@ export default function StudentsPage() {
       securityDeposit: data.securityDeposit ? parseFloat(data.securityDeposit) : undefined,
       unionFee: data.unionFee ? parseFloat(data.unionFee) : undefined,
       initialRentPaid: data.initialRentPaid ? parseFloat(data.initialRentPaid) : undefined,
-      bedNumber: isNumericBed ? bedNum : undefined,
-      bedName: !isNumericBed ? data.bedNumber : undefined,
+      bedNumber,
+      bedName,
     }
 
     if (editingStudent) {
