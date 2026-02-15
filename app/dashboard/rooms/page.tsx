@@ -67,6 +67,7 @@ export default function RoomsPage() {
   const router = useRouter()
   const queryClient = useQueryClient()
   const isAdmin = user?.role === 'admin'
+  const isStaff = user?.role === 'staff'
   const [showForm, setShowForm] = useState(false)
   const [showRentForm, setShowRentForm] = useState(false)
   const [selectedBed, setSelectedBed] = useState<{ roomId: string; bedName: string; bedPrice: number } | null>(null)
@@ -215,7 +216,7 @@ export default function RoomsPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Rooms</h1>
-            {!isAdmin && (
+            {!isAdmin && !isStaff && (
               <p className="text-sm text-secondary mt-1">View-only mode - Contact admin for changes</p>
             )}
           </div>
@@ -623,7 +624,7 @@ export default function RoomsPage() {
                                 size="sm"
                                 className="h-8 px-4 text-xs font-medium"
                                 onClick={() => handleRentBed(room._id, bed.name, bed.price)}
-                                disabled={!isAdmin}
+                                disabled={!isAdmin && !isStaff}
                               >
                                 Rent
                               </Button>
