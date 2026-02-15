@@ -13,6 +13,9 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
+  Select
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -90,6 +93,7 @@ export default function RoomsPage() {
   const [selectedBed, setSelectedBed] = useState<{ roomId: string; bedName: string; bedPrice: number } | null>(null)
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
   const pageSize = 10
 
@@ -126,12 +130,13 @@ export default function RoomsPage() {
     limit: number
     totalPages: number
   }>({
-    queryKey: ['rooms', page, searchQuery],
+    queryKey: ['rooms', page, searchQuery, statusFilter],
     queryFn: async () => {
       const params = new URLSearchParams()
       params.append('page', page.toString())
       params.append('limit', pageSize.toString())
       if (searchQuery) params.append('search', searchQuery)
+      if (statusFilter !== 'all') params.append('status', statusFilter)
 
       const response = await api.get(`/residential/rooms?${params.toString()}`)
       return response.data
@@ -229,10 +234,10 @@ export default function RoomsPage() {
     })
   }
 
-  // Reset to page 1 when search changes
+  // Reset to page 1 when search or filter changes
   useEffect(() => {
     setPage(1)
-  }, [searchQuery])
+  }, [searchQuery, statusFilter])
 
   return (
     <ProtectedRoute>
@@ -268,16 +273,29 @@ export default function RoomsPage() {
           )}
         </div>
 
-        {/* Search */}
-        <Input
-          placeholder="Search by room name or floor..."
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value)
-            setPage(1)
-          }}
-          className="max-w-md"
-        />
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Input
+            placeholder="Search by room name or floor..."
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value)
+              setPage(1)
+            }}
+            className="flex-1 max-w-md"
+          />
+          <Select
+            value={statusFilter}
+            onChange={(e) => {
+              setStatusFilter(e.target.value)
+              setPage(1)
+            }}
+            className="w-full sm:w-[180px]"
+          >
+            <option value="all">All Rooms</option>
+            <option value="available">Available</option>
+            <option value="full">Full / Booking</option>
+          </Select>
+        </div>
 
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogContent className="sm:max-w-[600px]">
