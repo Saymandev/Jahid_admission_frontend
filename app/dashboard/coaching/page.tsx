@@ -246,20 +246,46 @@ export default function CoachingPage() {
     setPaymentToDelete(paymentId)
     setIsDeleteDialogOpen(true)
   }
+  const [showConfirmAdmission, setShowConfirmAdmission] = useState(false)
+  const [pendingAdmissionData, setPendingAdmissionData] = useState<AdmissionFormData | null>(null)
+
+  // ...
+
   const onAdmissionSubmit = (data: AdmissionFormData) => {
-    admissionMutation.mutate({
-      ...data,
-      totalFee: parseFloat(data.totalFee),
-      paidAmount: data.paidAmount ? parseFloat(data.paidAmount) : 0,
-    })
+    setPendingAdmissionData(data)
+    setShowConfirmAdmission(true)
   }
 
-  const onPaymentSubmit = (data: PaymentFormData) => {
-    paymentMutation.mutate({
-      ...data,
-      paidAmount: parseFloat(data.paidAmount),
+  const handleConfirmAdmission = () => {
+    if (!pendingAdmissionData) return
+
+    admissionMutation.mutate({
+      ...pendingAdmissionData,
+      totalFee: parseFloat(pendingAdmissionData.totalFee),
+      paidAmount: pendingAdmissionData.paidAmount ? parseFloat(pendingAdmissionData.paidAmount) : 0,
     })
+    setShowConfirmAdmission(false)
   }
+
+
+  const [showConfirmPayment, setShowConfirmPayment] = useState(false)
+  const [pendingPaymentData, setPendingPaymentData] = useState<PaymentFormData | null>(null)
+
+  const onPaymentSubmit = (data: PaymentFormData) => {
+    setPendingPaymentData(data)
+    setShowConfirmPayment(true)
+  }
+
+  const handleConfirmPayment = () => {
+    if (!pendingPaymentData) return
+
+    paymentMutation.mutate({
+      ...pendingPaymentData,
+      paidAmount: parseFloat(pendingPaymentData.paidAmount),
+    })
+    setShowConfirmPayment(false)
+  }
+
 
   const handleExportReceipt = async (admissionId: string) => {
     try {
@@ -1050,6 +1076,73 @@ export default function CoachingPage() {
         confirmText="Delete"
         variant="danger"
         isLoading={deletePaymentMutation.isPending}
+      />
+
+      <ConfirmDialog
+        open={showConfirmAdmission}
+        onOpenChange={setShowConfirmAdmission}
+        onConfirm={handleConfirmAdmission}
+        title="Confirm New Admission"
+        description={
+          pendingAdmissionData ? (
+            <div className="space-y-2">
+              <p>Are you sure you want to admit <strong>{pendingAdmissionData.studentName}</strong>?</p>
+              <div className="bg-secondary/10 p-3 rounded-md text-sm">
+                 <div className="flex justify-between">
+                  <span>Course:</span>
+                  <span className="font-medium">{pendingAdmissionData.course}</span>
+                </div>
+                 <div className="flex justify-between">
+                  <span>Batch:</span>
+                  <span className="font-medium">{pendingAdmissionData.batch}</span>
+                </div>
+                <div className="flex justify-between mt-2 pt-2 border-t border-secondary/20">
+                  <span>Total Fee:</span>
+                  <span className="font-medium">{maskCurrency(parseFloat(pendingAdmissionData.totalFee), false)}</span>
+                </div>
+                {pendingAdmissionData.paidAmount && (
+                  <div className="flex justify-between">
+                    <span>Initial Payment:</span>
+                    <span className="font-medium text-success">{maskCurrency(parseFloat(pendingAdmissionData.paidAmount), false)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : 'Are you sure you want to proceed?'
+        }
+        confirmText="Confirm & Admit"
+        isLoading={admissionMutation.isPending}
+      />
+      <ConfirmDialog
+        open={showConfirmPayment}
+        onOpenChange={setShowConfirmPayment}
+        onConfirm={handleConfirmPayment}
+        title="Confirm Payment"
+        description={
+          pendingPaymentData && selectedStudentDetails ? (
+            <div className="space-y-2">
+              <p>Are you sure you want to record a payment for <strong>{selectedStudentDetails.studentName}</strong>?</p>
+              <div className="bg-secondary/10 p-3 rounded-md text-sm">
+                <div className="flex justify-between">
+                  <span>Amount:</span>
+                  <span className="font-medium text-success">{maskCurrency(parseFloat(pendingPaymentData.paidAmount), false)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Method:</span>
+                  <span className="font-medium capitalize">{pendingPaymentData.paymentMethod}</span>
+                </div>
+                 {pendingPaymentData.transactionId && (
+                  <div className="flex justify-between">
+                    <span>Trx ID:</span>
+                    <span className="font-medium">{pendingPaymentData.transactionId}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : 'Are you sure you want to proceed?'
+        }
+        confirmText="Confirm Payment"
+        isLoading={paymentMutation.isPending}
       />
     </ProtectedRoute>
   )

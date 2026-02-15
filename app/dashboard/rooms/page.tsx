@@ -1,5 +1,6 @@
 'use client'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { ProtectedRoute } from '@/components/protected-route'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -70,6 +71,8 @@ export default function RoomsPage() {
   const isStaff = user?.role === 'staff'
   const [showForm, setShowForm] = useState(false)
   const [showRentForm, setShowRentForm] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [pendingRentData, setPendingRentData] = useState<RentFormData | null>(null)
   const [selectedBed, setSelectedBed] = useState<{ roomId: string; bedName: string; bedPrice: number } | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [page, setPage] = useState(1)
@@ -178,21 +181,27 @@ export default function RoomsPage() {
   }
 
   const onRentSubmit = (data: RentFormData) => {
-    if (!selectedBed) return
+    setPendingRentData(data)
+    setShowConfirm(true)
+  }
+
+  const handleConfirmRent = () => {
+    if (!selectedBed || !pendingRentData) return
 
     rentMutation.mutate({
-      name: data.name,
-      phone: data.phone,
-      guardianName: data.guardianName || undefined,
-      guardianPhone: data.guardianPhone || undefined,
+      name: pendingRentData.name,
+      phone: pendingRentData.phone,
+      guardianName: pendingRentData.guardianName || undefined,
+      guardianPhone: pendingRentData.guardianPhone || undefined,
       roomId: selectedBed.roomId,
       bedName: selectedBed.bedName,
-      joiningDate: new Date(data.joiningDate).toISOString(),
-      monthlyRent: data.monthlyRent ? parseFloat(data.monthlyRent) : undefined,
-      securityDeposit: data.securityDeposit ? parseFloat(data.securityDeposit) : undefined,
-      unionFee: data.unionFee ? parseFloat(data.unionFee) : undefined,
-      initialRentPaid: data.initialRentPaid ? parseFloat(data.initialRentPaid) : undefined,
+      joiningDate: new Date(pendingRentData.joiningDate).toISOString(),
+      monthlyRent: pendingRentData.monthlyRent ? parseFloat(pendingRentData.monthlyRent) : undefined,
+      securityDeposit: pendingRentData.securityDeposit ? parseFloat(pendingRentData.securityDeposit) : undefined,
+      unionFee: pendingRentData.unionFee ? parseFloat(pendingRentData.unionFee) : undefined,
+      initialRentPaid: pendingRentData.initialRentPaid ? parseFloat(pendingRentData.initialRentPaid) : undefined,
     })
+    setShowConfirm(false)
   }
 
 
@@ -690,6 +699,40 @@ export default function RoomsPage() {
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showConfirm}
+        onOpenChange={setShowConfirm}
+        onConfirm={handleConfirmRent}
+        title="Confirm Bed Rental"
+        description={
+          pendingRentData && selectedBed ? (
+            <div className="space-y-2">
+              <p>Are you sure you want to rent <strong>{selectedBed.bedName}</strong> to <strong>{pendingRentData.name}</strong>?</p>
+              <div className="bg-secondary/10 p-3 rounded-md text-sm">
+                <div className="flex justify-between">
+                  <span>Monthly Rent:</span>
+                  <span className="font-medium">{maskCurrency(pendingRentData.monthlyRent ? parseFloat(pendingRentData.monthlyRent) : selectedBed.bedPrice, false)}</span>
+                </div>
+                {pendingRentData.securityDeposit && (
+                  <div className="flex justify-between">
+                    <span>Security Deposit:</span>
+                    <span className="font-medium">{maskCurrency(parseFloat(pendingRentData.securityDeposit), false)}</span>
+                  </div>
+                )}
+                 {pendingRentData.initialRentPaid && (
+                  <div className="flex justify-between mt-1 pt-1 border-t border-secondary/20">
+                    <span>Initial Payment:</span>
+                    <span className="font-medium text-success">{maskCurrency(parseFloat(pendingRentData.initialRentPaid), false)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : 'Are you sure you want to proceed?'
+        }
+        confirmText="Confirm & Rent"
+        isLoading={rentMutation.isPending}
+      />
     </ProtectedRoute>
   )
 }
