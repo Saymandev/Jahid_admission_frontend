@@ -352,7 +352,9 @@ export default function CoachingPage() {
   }, [searchQuery, statusFilter, batchFilter, courseFilter])
 
   const isAdmin = user?.role === 'admin'
-  // Staff can view admissions and record payments but not create/edit/delete
+  const isStaff = user?.role === 'staff'
+  const canCreate = isAdmin || isStaff
+  // Staff can view admissions and record payments but not create/edit/delete (now staff can create admissions)
 
   return (
     <ProtectedRoute>
@@ -548,7 +550,7 @@ export default function CoachingPage() {
           </div>
         )}
 
-        {isAdmin && showAdmissionForm && (
+        {canCreate && showAdmissionForm && (
           <Card>
             <CardHeader>
               <CardTitle>New Admission</CardTitle>

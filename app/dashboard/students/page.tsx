@@ -269,7 +269,8 @@ export default function StudentsPage() {
   }, [searchQuery, statusFilter])
 
   const isAdmin = user?.role === 'admin'
-  // Staff can view students and record payments but not create/edit/delete
+  const isStaff = user?.role === 'staff'
+  const canCreate = isAdmin || isStaff
 
   return (
     <ProtectedRoute>
@@ -277,11 +278,11 @@ export default function StudentsPage() {
         <div className="flex justify-between items-center">
           <div>
             <h1 className="text-3xl font-bold">Students</h1>
-            {!isAdmin && (
+            {!canCreate && (
               <p className="text-sm text-secondary mt-1">View-only mode - You can record payments</p>
             )}
           </div>
-          {isAdmin && (
+          {canCreate && (
             <Button
               onClick={() => {
                 if (showForm) {
