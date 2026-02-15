@@ -184,13 +184,13 @@ export default function AuditLogsPage() {
                                 <div>
                                   <h4 className="font-semibold mb-2 text-danger">Old Data</h4>
                                   <pre className="bg-muted p-2 rounded overflow-x-auto">
-                                    {log.oldData ? JSON.stringify(log.oldData, null, 2) : 'N/A'}
+                                    {log.oldData ? JSON.stringify(log.oldData, null, 2) : '-'}
                                   </pre>
                                 </div>
                                 <div>
                                   <h4 className="font-semibold mb-2 text-success">New Data</h4>
                                   <pre className="bg-muted p-2 rounded overflow-x-auto">
-                                    {log.newData ? JSON.stringify(log.newData, null, 2) : 'N/A'}
+                                    {log.newData ? JSON.stringify(log.newData, null, 2) : '-'}
                                   </pre>
                                 </div>
                               </div>
