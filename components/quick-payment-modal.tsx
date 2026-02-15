@@ -1,5 +1,6 @@
 'use client'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -44,6 +45,10 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Student[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  
+  // Confirmation state
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [pendingData, setPendingData] = useState<PaymentFormData | null>(null)
 
   useEffect(() => {
     setActiveStudent(initialStudent || null)
@@ -125,19 +130,26 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
 
   const onSubmit = (data: PaymentFormData) => {
     if (!activeStudent) return
+    setPendingData(data)
+    setShowConfirm(true)
+  }
+
+  const handleConfirmPayment = () => {
+    if (!activeStudent || !pendingData) return
 
     paymentMutation.mutate({
       studentId: activeStudent._id,
-      rentAmount: data.rentAmount ? parseFloat(data.rentAmount) : 0,
-      securityAmount: data.securityAmount ? parseFloat(data.securityAmount) : 0,
-      unionFeeAmount: data.unionFeeAmount ? parseFloat(data.unionFeeAmount) : 0,
-      otherAmount: data.otherAmount ? parseFloat(data.otherAmount) : 0,
-      billingMonth: data.rentAmount && parseFloat(data.rentAmount) > 0 && !data.isAdvance ? data.billingMonth : undefined,
-      paymentMethod: data.paymentMethod,
-      transactionId: data.transactionId,
-      notes: data.notes || 'Quick Payment',
-      isAdvance: data.isAdvance,
+      rentAmount: pendingData.rentAmount ? parseFloat(pendingData.rentAmount) : 0,
+      securityAmount: pendingData.securityAmount ? parseFloat(pendingData.securityAmount) : 0,
+      unionFeeAmount: pendingData.unionFeeAmount ? parseFloat(pendingData.unionFeeAmount) : 0,
+      otherAmount: pendingData.otherAmount ? parseFloat(pendingData.otherAmount) : 0,
+      billingMonth: pendingData.rentAmount && parseFloat(pendingData.rentAmount) > 0 && !pendingData.isAdvance ? pendingData.billingMonth : undefined,
+      paymentMethod: pendingData.paymentMethod,
+      transactionId: pendingData.transactionId,
+      notes: pendingData.notes || 'Quick Payment',
+      isAdvance: pendingData.isAdvance,
     })
+    setShowConfirm(false)
   }
 
   return (
@@ -294,6 +306,46 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
           </form>
         )}
       </DialogContent>
+
+      <ConfirmDialog
+        open={showConfirm}
+        onOpenChange={setShowConfirm}
+        onConfirm={handleConfirmPayment}
+        title="Confirm Payment"
+        description={
+          <div className="space-y-2">
+            <p>Are you sure you want to record this payment?</p>
+            <div className="bg-muted p-3 rounded-md text-sm">
+              <div className="flex justify-between">
+                <span>Student:</span>
+                <span className="font-medium">{activeStudent?.name}</span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span>Amount:</span>
+                <span className="font-medium">
+                  {(
+                    (pendingData?.rentAmount ? parseFloat(pendingData.rentAmount) : 0) +
+                    (pendingData?.securityAmount ? parseFloat(pendingData.securityAmount) : 0) +
+                    (pendingData?.unionFeeAmount ? parseFloat(pendingData.unionFeeAmount) : 0) +
+                    (pendingData?.otherAmount ? parseFloat(pendingData.otherAmount) : 0)
+                  ).toLocaleString()} BDT
+                </span>
+              </div>
+              <div className="flex justify-between mt-1">
+                <span>Method:</span>
+                <span className="font-medium capitalize">{pendingData?.paymentMethod}</span>
+              </div>
+               {pendingData?.isAdvance && (
+                <div className="mt-2 text-xs text-primary font-medium">
+                  * Marked as Advance Payment
+                </div>
+              )}
+            </div>
+          </div>
+        }
+        confirmText="Confirm Payment"
+        isLoading={paymentMutation.isPending}
+      />
     </Dialog>
   )
 }
