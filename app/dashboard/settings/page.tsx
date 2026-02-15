@@ -11,7 +11,7 @@ import { useAuthStore } from '@/store/auth-store'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 
@@ -30,6 +30,14 @@ export default function SettingsPage() {
   const user = useAuthStore((state) => state.user)
   const router = useRouter()
   const [showPasswordForm, setShowPasswordForm] = useState(false)
+
+  // Redirect staff users away from settings
+  useEffect(() => {
+    if (user && user.role !== 'admin') {
+      router.push('/dashboard')
+      showToast('Access denied. Admins only.', 'error')
+    }
+  }, [user, router])
 
   const {
     register,

@@ -63,6 +63,7 @@ export default function StudentsPage() {
   const [foundStudent, setFoundStudent] = useState<any>(null)
   const [isSearching, setIsSearching] = useState(false)
   const [selectedStudentForPayment, setSelectedStudentForPayment] = useState<any>(null)
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
 
   // Reset to page 1 when status param changes
@@ -115,11 +116,11 @@ export default function StudentsPage() {
 
   // Reset bed and monthly rent when room changes
   useEffect(() => {
-    if (selectedRoomId) {
+    if (selectedRoomId && !editingStudent) {
       setValue('bedNumber', '')
       setValue('monthlyRent', '')
     }
-  }, [selectedRoomId, setValue])
+  }, [selectedRoomId, setValue, editingStudent])
 
   // Search for existing student when phone or name is entered
   const phoneValue = watch('phone')
@@ -247,22 +248,42 @@ export default function StudentsPage() {
     },
   })
 
-  const onSubmit = (data: StudentFormData) => {
-    // Check if bedNumber is a bed name (string) or bed number (number)
-    const bedName = selectedRoom?.beds?.find((b: any) => b.name === data.bedNumber) ? data.bedNumber : undefined
-    const bedNumber = bedName ? undefined : parseInt(data.bedNumber)
+  const updateMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (!editingStudent) return
+      return api.patch(`/residential/students/${editingStudent._id}`, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      setShowForm(false)
+      setEditingStudent(null)
+      reset({
+        joiningDate: new Date().toISOString().split('T')[0],
+      })
+      showToast('Student updated successfully!', 'success')
+    },
+    onError: (error: any) => {
+      showToast(error.response?.data?.message || 'Failed to update student', 'error')
+    },
+  })
 
-    createMutation.mutate({
+  const onSubmit = async (data: StudentFormData) => {
+    const payload = {
       ...data,
-      bedNumber: bedNumber,
-      bedName: bedName,
       monthlyRent: data.monthlyRent ? parseFloat(data.monthlyRent) : undefined,
       securityDeposit: data.securityDeposit ? parseFloat(data.securityDeposit) : undefined,
       unionFee: data.unionFee ? parseFloat(data.unionFee) : undefined,
       initialRentPaid: data.initialRentPaid ? parseFloat(data.initialRentPaid) : undefined,
-    })
-  }
+      bedNumber: parseInt(data.bedNumber),
+    }
 
+    if (editingStudent) {
+      updateMutation.mutate(payload)
+    } else {
+      createMutation.mutate(payload)
+    }
+  }
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
@@ -381,6 +402,27 @@ export default function StudentsPage() {
                       >
                         View Details →
                       </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-primary/30 text-primary hover:bg-primary/5"
+                          onClick={() => {
+                            setEditingStudent(student)
+                            reset({
+                              name: student.name,
+                              phone: student.phone,
+                              roomId: student.roomId?._id,
+                              bedNumber: student.bedNumber.toString(),
+                              monthlyRent: student.monthlyRent?.toString(),
+                              joiningDate: new Date().toISOString().split('T')[0], // Fallback or handle null
+                            })
+                            setShowForm(true)
+                          }}
+                        >
+                          Edit
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardHeader>
@@ -456,7 +498,7 @@ export default function StudentsPage() {
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Add New Student</DialogTitle>
+              <DialogTitle>{editingStudent ? 'Edit Student Details' : 'Add New Student'}</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -679,23 +721,23 @@ export default function StudentsPage() {
                   </Button>
                   <Button
                     type="submit"
-                    disabled={createMutation.isPending}
+                    disabled={createMutation.isPending || updateMutation.isPending}
                     className="h-10 font-semibold"
                   >
-                    {createMutation.isPending ? (
+                    {createMutation.isPending || updateMutation.isPending ? (
                       <>
                         <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                         </svg>
-                        Creating...
+                        Saving...
                       </>
                     ) : (
                       <>
                         <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                         </svg>
-                        Create Student
+                        {editingStudent ? 'Update Student' : 'Create Student'}
                       </>
                     )}
                   </Button>

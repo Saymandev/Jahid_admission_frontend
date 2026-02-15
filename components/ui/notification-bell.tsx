@@ -3,12 +3,15 @@
 import { Button } from '@/components/ui/button'
 import { getUnreadCount } from '@/lib/notifications'
 import { getPusher } from '@/lib/pusher'
+import { useAuthStore } from '@/store/auth-store'
 import { useEffect, useState } from 'react'
 import { NotificationPanel } from './notification-panel'
 
 export function NotificationBell() {
   const [isOpen, setIsOpen] = useState(false)
   const [unreadCount, setUnreadCount] = useState(0)
+  const user = useAuthStore((state) => state.user)
+  const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
     const updateUnreadCount = () => {
@@ -27,13 +30,23 @@ export function NotificationBell() {
     
     // Listen for real-time notifications via Pusher
     const pusher = getPusher()
-    const channel = pusher?.subscribe('main-channel')
+    const channels: any[] = []
+
+    if (isAdmin) {
+      channels.push(pusher?.subscribe('main-channel'))
+    }
+
+    if (user?.id) {
+      channels.push(pusher?.subscribe(`user-${user.id}`))
+    }
     
     const handleNotification = () => {
       updateUnreadCount()
     }
 
-    channel?.bind('notification', handleNotification)
+    channels.forEach(channel => {
+      channel?.bind('notification', handleNotification)
+    })
 
     // Also listen for custom storage events (same-tab updates)
     const handleCustomStorage = () => {
@@ -44,10 +57,13 @@ export function NotificationBell() {
     return () => {
       window.removeEventListener('storage', handleStorageChange)
       window.removeEventListener('notification-updated', handleCustomStorage)
-      channel?.unbind('notification', handleNotification)
-      pusher?.unsubscribe('main-channel')
+      channels.forEach(channel => {
+        channel?.unbind('notification', handleNotification)
+      })
+      if (isAdmin) pusher?.unsubscribe('main-channel')
+      if (user?.id) pusher?.unsubscribe(`user-${user.id}`)
     }
-  }, [])
+  }, [isAdmin, user?.id])
 
   return (
     <>

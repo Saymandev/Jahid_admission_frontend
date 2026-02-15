@@ -22,7 +22,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const [searchQuery, setSearchQuery] = useState('')
   const [isQuickRentOpen, setIsQuickRentOpen] = useState(false)
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout')
+    } catch (error) {
+      console.error('Logout error:', error)
+    }
     logout()
     router.push('/login')
   }
@@ -46,8 +51,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           { href: '/dashboard/users', label: 'Users', icon: '👤' },
           { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: '📝' },
           { href: '/dashboard/archive', label: 'Archive', icon: '📦' },
+          { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
         ] : []),
-        { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
       ]
 
   return (

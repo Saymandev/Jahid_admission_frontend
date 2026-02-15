@@ -3,16 +3,17 @@
 import { Button } from '@/components/ui/button'
 import { CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-    clearAllNotifications,
-    deleteNotification,
-    getNotifications,
-    getUnreadCount,
-    markAllAsRead,
-    markAsRead,
-    type Notification,
+  clearAllNotifications,
+  deleteNotification,
+  getNotifications,
+  getUnreadCount,
+  markAllAsRead,
+  markAsRead,
+  type Notification,
 } from '@/lib/notifications'
 import { getPusher } from '@/lib/pusher'
 import { cn } from '@/lib/utils'
+import { useAuthStore } from '@/store/auth-store'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -26,6 +27,8 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
   const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
+  const user = useAuthStore((state) => state.user)
+  const isAdmin = user?.role === 'admin'
 
   useEffect(() => {
     // Load notifications from storage
@@ -39,7 +42,15 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
 
     // Listen for new notifications via Pusher
     const pusher = getPusher()
-    const channel = pusher?.subscribe('main-channel')
+    const channels: any[] = []
+
+    if (isAdmin) {
+      channels.push(pusher?.subscribe('main-channel'))
+    }
+
+    if (user?.id) {
+      channels.push(pusher?.subscribe(`user-${user.id}`))
+    }
 
     const handleNotification = (notification: Omit<Notification, 'read'>) => {
       const { addNotification: addNotif } = require('@/lib/notifications')
@@ -48,13 +59,18 @@ export function NotificationPanel({ isOpen, onClose }: NotificationPanelProps) {
       setUnreadCount(getUnreadCount())
     }
 
-    channel?.bind('notification', handleNotification)
+    channels.forEach(channel => {
+      channel?.bind('notification', handleNotification)
+    })
 
     return () => {
-      channel?.unbind('notification', handleNotification)
-      pusher?.unsubscribe('main-channel')
+      channels.forEach(channel => {
+        channel?.unbind('notification', handleNotification)
+      })
+      if (isAdmin) pusher?.unsubscribe('main-channel')
+      if (user?.id) pusher?.unsubscribe(`user-${user.id}`)
     }
-  }, [])
+  }, [isAdmin, user?.id])
 
   const handleMarkAsRead = (id: string) => {
     const updated = markAsRead(id)

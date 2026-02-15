@@ -5,23 +5,23 @@ import { ProtectedRoute } from '@/components/protected-route'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  Select
+    Select
 } from '@/components/ui/select'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
 } from '@/components/ui/table'
 import api from '@/lib/api'
 import { maskCurrency } from '@/lib/mask-value'
@@ -92,6 +92,7 @@ export default function RoomsPage() {
   const [pendingRentData, setPendingRentData] = useState<RentFormData | null>(null)
   const [selectedBed, setSelectedBed] = useState<{ roomId: string; bedName: string; bedPrice: number } | null>(null)
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null)
+  const [editingRoom, setEditingRoom] = useState<Room | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
@@ -154,14 +155,62 @@ export default function RoomsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      showToast('Room created successfully', 'success')
       setShowForm(false)
       reset()
-      showToast('Room created successfully!', 'success')
     },
     onError: (error: any) => {
       showToast(error.response?.data?.message || 'Failed to create room', 'error')
     },
   })
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: RoomFormData) => {
+      if (!editingRoom) return
+      return api.patch(`/residential/rooms/${editingRoom._id}`, data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      showToast('Room updated successfully', 'success')
+      setShowForm(false)
+      setEditingRoom(null)
+      reset()
+    },
+    onError: (error: any) => {
+      showToast(error.response?.data?.message || 'Failed to update room', 'error')
+    },
+  })
+
+  const onSubmit = async (data: RoomFormData) => {
+    if (editingRoom) {
+      const rentPerBed = parseFloat(data.monthlyRentPerBed)
+      const totalBedsCount = parseInt(data.totalBeds)
+
+      updateMutation.mutate({
+        name: data.name,
+        floor: data.floor || undefined,
+        totalBeds: totalBedsCount,
+        monthlyRentPerBed: rentPerBed,
+      } as any)
+    } else {
+      const rentPerBed = parseFloat(data.monthlyRentPerBed)
+      const totalBedsCount = parseInt(data.totalBeds)
+
+      // Auto-generate beds
+      const beds = Array.from({ length: totalBedsCount }, (_, index) => ({
+        name: `Bed ${index + 1}`,
+        price: rentPerBed,
+      }))
+
+      createMutation.mutate({
+        name: data.name,
+        floor: data.floor || undefined,
+        beds,
+        totalBeds: totalBedsCount,
+        monthlyRentPerBed: rentPerBed,
+      })
+    }
+  }
 
   const rentMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -180,25 +229,6 @@ export default function RoomsPage() {
       showToast(error.response?.data?.message || 'Failed to rent bed', 'error')
     },
   })
-
-  const onSubmit = (data: RoomFormData) => {
-    const rentPerBed = parseFloat(data.monthlyRentPerBed)
-    const totalBedsCount = parseInt(data.totalBeds)
-
-    // Auto-generate beds
-    const beds = Array.from({ length: totalBedsCount }, (_, index) => ({
-      name: `Bed ${index + 1}`,
-      price: rentPerBed,
-    }))
-
-    createMutation.mutate({
-      name: data.name,
-      floor: data.floor || undefined,
-      beds,
-      totalBeds: totalBedsCount,
-      monthlyRentPerBed: rentPerBed,
-    })
-  }
 
   const onRentSubmit = (data: RentFormData) => {
     setPendingRentData(data)
@@ -234,10 +264,33 @@ export default function RoomsPage() {
     })
   }
 
+  const handleEditRoom = (room: Room) => {
+    setEditingRoom(room)
+    reset({
+      name: room.name,
+      floor: room.floor || '',
+      totalBeds: room.totalBeds.toString(),
+      monthlyRentPerBed: room.monthlyRentPerBed.toString(),
+    })
+    setShowForm(true)
+  }
+
   // Reset to page 1 when search or filter changes
   useEffect(() => {
     setPage(1)
   }, [searchQuery, statusFilter])
+
+  useEffect(() => {
+    if (!showForm) {
+      setEditingRoom(null)
+      reset({
+        name: '',
+        floor: '',
+        totalBeds: '',
+        monthlyRentPerBed: '',
+      })
+    }
+  }, [showForm, reset])
 
   return (
     <ProtectedRoute>
@@ -306,7 +359,7 @@ export default function RoomsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                Add New Room
+                {editingRoom ? 'Edit Room' : 'Add New Room'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 py-4">
@@ -360,21 +413,29 @@ export default function RoomsPage() {
               </div>
 
               <div className="flex gap-3 justify-end pt-4 border-t">
-                <Button variant="outline" type="button" onClick={() => setShowForm(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowForm(false)
+                    setEditingRoom(null)
+                    reset()
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || updateMutation.isPending}
                   className="px-8 font-semibold"
                 >
-                  {createMutation.isPending ? (
+                  {createMutation.isPending || updateMutation.isPending ? (
                     <>
                       <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Creating...
+                      Saving...
                     </>
                   ) : (
                     'Create Room'
@@ -612,6 +673,25 @@ export default function RoomsPage() {
                           >
                             Details
                           </Button>
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 px-3 text-xs border-primary/30 text-primary hover:bg-primary/5"
+                              onClick={() => {
+                                setEditingRoom(room)
+                                reset({
+                                  name: room.name,
+                                  floor: room.floor || '',
+                                  totalBeds: room.totalBeds.toString(),
+                                  monthlyRentPerBed: room.monthlyRentPerBed.toString(),
+                                })
+                                setShowForm(true)
+                              }}
+                            >
+                              Edit
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             className="h-8 px-3 text-xs"
