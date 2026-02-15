@@ -269,13 +269,17 @@ export default function StudentsPage() {
   })
 
   const onSubmit = async (data: StudentFormData) => {
+    const bedNum = parseInt(data.bedNumber)
+    const isNumericBed = !isNaN(bedNum)
+
     const payload = {
       ...data,
       monthlyRent: data.monthlyRent ? parseFloat(data.monthlyRent) : undefined,
       securityDeposit: data.securityDeposit ? parseFloat(data.securityDeposit) : undefined,
       unionFee: data.unionFee ? parseFloat(data.unionFee) : undefined,
       initialRentPaid: data.initialRentPaid ? parseFloat(data.initialRentPaid) : undefined,
-      bedNumber: parseInt(data.bedNumber),
+      bedNumber: isNumericBed ? bedNum : undefined,
+      bedName: !isNumericBed ? data.bedNumber : undefined,
     }
 
     if (editingStudent) {
