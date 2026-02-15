@@ -18,11 +18,44 @@ const DialogContext = React.createContext<{
   onOpenChange: () => {},
 })
 
-export function Dialog({ open = false, onOpenChange, children }: DialogProps) {
+// Basic Dialog Implementation (Custom)
+export function Dialog({ open, onOpenChange, children }: DialogProps) {
+  const [isOpen, setIsOpen] = React.useState(open || false)
+  const isControlled = open !== undefined
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!isControlled) {
+      setIsOpen(newOpen)
+    }
+    onOpenChange?.(newOpen)
+  }
+
+  const effectiveOpen = isControlled ? open : isOpen
+
   return (
-    <DialogContext.Provider value={{ open, onOpenChange: onOpenChange || (() => {}) }}>
+    <DialogContext.Provider value={{ open: !!effectiveOpen, onOpenChange: handleOpenChange }}>
       {children}
     </DialogContext.Provider>
+  )
+}
+
+export function DialogTrigger({ asChild, children, ...props }: any) {
+  const { onOpenChange } = React.useContext(DialogContext)
+  
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(children as React.ReactElement, {
+      ...props,
+      onClick: (e: React.MouseEvent) => {
+        (children as React.ReactElement).props.onClick?.(e)
+        onOpenChange(true)
+      }
+    } as any)
+  }
+
+  return (
+    <button {...props} onClick={() => onOpenChange(true)}>
+      {children}
+    </button>
   )
 }
 

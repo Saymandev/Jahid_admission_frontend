@@ -55,6 +55,9 @@ export default function StudentDetailPage() {
 
 
 
+  const [paymentConfirmationOpen, setPaymentConfirmationOpen] = useState(false)
+  const [pendingPaymentData, setPendingPaymentData] = useState<PaymentFormData | null>(null)
+  
   const [selectedBillingMonth, setSelectedBillingMonth] = useState(new Date().toISOString().slice(0, 7))
 
   const {
@@ -212,18 +215,27 @@ export default function StudentDetailPage() {
   const isAdmin = user?.role === 'admin'
 
   const onPaymentSubmit = (data: PaymentFormData) => {
+    setPendingPaymentData(data)
+    setPaymentConfirmationOpen(true)
+  }
+
+  const handleConfirmPayment = () => {
+    if (!pendingPaymentData) return
+
     paymentMutation.mutate({
       studentId,
-      rentAmount: data.rentAmount ? parseFloat(data.rentAmount) : 0,
-      securityAmount: data.securityAmount ? parseFloat(data.securityAmount) : 0,
-      unionFeeAmount: data.unionFeeAmount ? parseFloat(data.unionFeeAmount) : 0,
-      otherAmount: data.otherAmount ? parseFloat(data.otherAmount) : 0,
-      billingMonth: data.rentAmount && parseFloat(data.rentAmount) > 0 && !data.isAdvance ? data.billingMonth : undefined,
-      paymentMethod: data.paymentMethod,
-      transactionId: data.transactionId,
-      notes: data.notes,
-      isAdvance: data.isAdvance,
+      rentAmount: pendingPaymentData.rentAmount ? parseFloat(pendingPaymentData.rentAmount) : 0,
+      securityAmount: pendingPaymentData.securityAmount ? parseFloat(pendingPaymentData.securityAmount) : 0,
+      unionFeeAmount: pendingPaymentData.unionFeeAmount ? parseFloat(pendingPaymentData.unionFeeAmount) : 0,
+      otherAmount: pendingPaymentData.otherAmount ? parseFloat(pendingPaymentData.otherAmount) : 0,
+      billingMonth: pendingPaymentData.rentAmount && parseFloat(pendingPaymentData.rentAmount) > 0 && !pendingPaymentData.isAdvance ? pendingPaymentData.billingMonth : undefined,
+      paymentMethod: pendingPaymentData.paymentMethod,
+      transactionId: pendingPaymentData.transactionId,
+      notes: pendingPaymentData.notes,
+      isAdvance: pendingPaymentData.isAdvance,
     })
+    setPaymentConfirmationOpen(false)
+    setPendingPaymentData(null)
   }
 
 
@@ -1304,6 +1316,99 @@ export default function StudentDetailPage() {
         variant="danger"
         isLoading={deleteMutation.isPending}
       />
+      
+      <ConfirmDialog
+          open={paymentConfirmationOpen}
+          onOpenChange={(open) => {
+            setPaymentConfirmationOpen(open)
+            if (!open) setPendingPaymentData(null)
+          }}
+          onConfirm={handleConfirmPayment}
+          title="Confirm Payment Details"
+          description={(
+            <div className="space-y-4 pt-4 text-left">
+              <div className="p-4 bg-muted/50 rounded-lg border space-y-3 text-sm">
+                <div className="flex justify-between border-b pb-2 mb-2">
+                  <span className="text-secondary font-medium">Student</span>
+                  <span className="font-bold">{student.name}</span>
+                </div>
+                
+                {pendingPaymentData?.rentAmount && parseFloat(pendingPaymentData.rentAmount) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-secondary">Rent Payment</span>
+                    <span>{maskCurrency(pendingPaymentData.rentAmount, false)}</span>
+                  </div>
+                )}
+                {pendingPaymentData?.securityAmount && parseFloat(pendingPaymentData.securityAmount) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-secondary">Security Deposit</span>
+                    <span>{maskCurrency(pendingPaymentData.securityAmount, false)}</span>
+                  </div>
+                )}
+                 {pendingPaymentData?.unionFeeAmount && parseFloat(pendingPaymentData.unionFeeAmount) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-secondary">Union Fee</span>
+                    <span>{maskCurrency(pendingPaymentData.unionFeeAmount, false)}</span>
+                  </div>
+                )}
+                {pendingPaymentData?.otherAmount && parseFloat(pendingPaymentData.otherAmount) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-secondary">Other Amount</span>
+                    <span>{maskCurrency(pendingPaymentData.otherAmount, false)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between pt-2 border-t mt-2 font-bold text-base">
+                  <span>Total Receiving Amount</span>
+                  <span className="text-primary">
+                    {maskCurrency(
+                      (parseFloat(pendingPaymentData?.rentAmount || '0') || 0) +
+                      (parseFloat(pendingPaymentData?.securityAmount || '0') || 0) +
+                      (parseFloat(pendingPaymentData?.unionFeeAmount || '0') || 0) +
+                      (parseFloat(pendingPaymentData?.otherAmount || '0') || 0),
+                      false
+                    )}
+                  </span>
+                </div>
+              </div>
+
+               <div className="grid grid-cols-2 gap-3 text-sm">
+                 <div className="flex flex-col gap-1 p-2 bg-muted/20 rounded border">
+                    <span className="text-xs text-secondary uppercase font-semibold">Billing Month</span>
+                    <span className="font-medium">
+                      {pendingPaymentData?.isAdvance 
+                        ? 'Advance Payment' 
+                        : new Date((pendingPaymentData?.billingMonth || selectedBillingMonth) + '-01').toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                      }
+                    </span>
+                 </div>
+                 <div className="flex flex-col gap-1 p-2 bg-muted/20 rounded border">
+                    <span className="text-xs text-secondary uppercase font-semibold">Payment Method</span>
+                    <span className="font-medium uppercase">{pendingPaymentData?.paymentMethod}</span>
+                 </div>
+                 {pendingPaymentData?.transactionId && (
+                    <div className="col-span-2 flex flex-col gap-1 p-2 bg-muted/20 rounded border">
+                      <span className="text-xs text-secondary uppercase font-semibold">Transaction ID</span>
+                      <span className="font-mono">{pendingPaymentData.transactionId}</span>
+                    </div>
+                 )}
+               </div>
+
+               {pendingPaymentData?.notes && (
+                  <div className="text-sm p-3 bg-muted/30 rounded border text-secondary italic">
+                    "{pendingPaymentData.notes}"
+                  </div>
+               )}
+
+              <div className="flex gap-3 p-3 bg-blue-50 text-blue-800 rounded text-sm border border-blue-100 items-start">
+                 <span className="text-lg leading-none">ℹ️</span>
+                 <p className="leading-tight">Please review the details carefully. Once confirmed, the payment will be recorded and receipt generation will be available.</p>
+              </div>
+            </div>
+          )}
+          confirmText="Confirm & Record Payment"
+          isLoading={paymentMutation.isPending}
+        />
     </ProtectedRoute>
 
   )

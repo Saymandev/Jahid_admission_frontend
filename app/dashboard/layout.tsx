@@ -44,6 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         ...(user?.role === 'admin' ? [
           { href: '/dashboard/transactions', label: 'Transactions', icon: '💳' },
           { href: '/dashboard/users', label: 'Users', icon: '👤' },
+          { href: '/dashboard/audit-logs', label: 'Audit Logs', icon: '📝' },
           { href: '/dashboard/archive', label: 'Archive', icon: '📦' },
         ] : []),
         { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },

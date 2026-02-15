@@ -14,7 +14,7 @@ interface ConfirmDialogProps {
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
   title: string
-  description: string
+  description: React.ReactNode
   confirmText?: string
   cancelText?: string
   variant?: 'danger' | 'primary'
@@ -42,9 +42,9 @@ export function ConfirmDialog({
             </div>
             <DialogTitle className="text-xl">{title}</DialogTitle>
           </div>
-          <p className="text-secondary text-sm leading-relaxed">
+          <div className="text-secondary text-sm leading-relaxed">
             {description}
-          </p>
+          </div>
         </DialogHeader>
         <div className="flex gap-3 mt-6">
           <Button
