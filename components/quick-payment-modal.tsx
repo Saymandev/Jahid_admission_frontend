@@ -136,18 +136,6 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
       const response = await api.post('/residential/payments/bulk', data)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-due-status', activeStudent?._id] })
-      queryClient.invalidateQueries({ queryKey: ['students'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      showToast(`Payment recorded for ${activeStudent?.name}`, 'success')
-      onClose()
-      reset()
-    },
-    onError: (error: any) => {
-      showToast(error.response?.data?.message || 'Failed to record payment', 'error')
-    },
   })
 
   const onSubmit = (data: PaymentFormData) => {
@@ -156,22 +144,38 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
     setShowConfirm(true)
   }
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!activeStudent || !pendingData) return
 
-    paymentMutation.mutate({
-      studentId: activeStudent._id,
-      rentAmount: pendingData.rentAmount ? parseFloat(pendingData.rentAmount) : 0,
-      securityAmount: pendingData.securityAmount ? parseFloat(pendingData.securityAmount) : 0,
-      unionFeeAmount: pendingData.unionFeeAmount ? parseFloat(pendingData.unionFeeAmount) : 0,
-      otherAmount: pendingData.otherAmount ? parseFloat(pendingData.otherAmount) : 0,
-      billingMonth: pendingData.rentAmount && parseFloat(pendingData.rentAmount) > 0 && !pendingData.isAdvance ? pendingData.billingMonth : undefined,
-      paymentMethod: pendingData.paymentMethod,
-      transactionId: pendingData.transactionId,
-      notes: pendingData.notes || 'Quick Payment',
-      isAdvance: pendingData.isAdvance,
-    })
-    // Do NOT close here. Wait for success/error.
+    try {
+      await paymentMutation.mutateAsync({
+        studentId: activeStudent._id,
+        rentAmount: pendingData.rentAmount ? parseFloat(pendingData.rentAmount) : 0,
+        securityAmount: pendingData.securityAmount ? parseFloat(pendingData.securityAmount) : 0,
+        unionFeeAmount: pendingData.unionFeeAmount ? parseFloat(pendingData.unionFeeAmount) : 0,
+        otherAmount: pendingData.otherAmount ? parseFloat(pendingData.otherAmount) : 0,
+        billingMonth: pendingData.rentAmount && parseFloat(pendingData.rentAmount) > 0 && !pendingData.isAdvance ? pendingData.billingMonth : undefined,
+        paymentMethod: pendingData.paymentMethod,
+        transactionId: pendingData.transactionId,
+        notes: pendingData.notes || 'Quick Payment',
+        isAdvance: pendingData.isAdvance,
+      })
+
+      // Success handling
+      queryClient.invalidateQueries({ queryKey: ['student-due-status', activeStudent?._id] })
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      
+      showToast(`Payment recorded for ${activeStudent?.name}`, 'success')
+      setShowConfirm(false) // Close confirmation modal
+      onClose() // Close main modal
+      reset() // Reset form
+      setPendingData(null)
+    } catch (error: any) {
+      console.error('Payment failed', error)
+      showToast(error.response?.data?.message || 'Failed to record payment', 'error')
+    }
   }
 
   return (
