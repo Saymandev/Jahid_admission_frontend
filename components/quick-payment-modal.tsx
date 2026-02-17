@@ -76,10 +76,19 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
         })
         const students: Student[] = response.data.data || []
 
-        // Client-side Sort by Room Name
+        // Client-side Sort: 
+        // 1. Exact Room Match (Top Priority)
+        // 2. Room Name (Numeric Sort)
         students.sort((a, b) => {
           const roomA = a.roomId?.name || ''
           const roomB = b.roomId?.name || ''
+          
+          const aMatchesRoom = roomA.toLowerCase() === searchQuery.toLowerCase()
+          const bMatchesRoom = roomB.toLowerCase() === searchQuery.toLowerCase()
+
+          if (aMatchesRoom && !bMatchesRoom) return -1
+          if (!aMatchesRoom && bMatchesRoom) return 1
+
           return roomA.localeCompare(roomB, undefined, { numeric: true })
         })
 
