@@ -7,10 +7,10 @@ import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -145,6 +145,8 @@ export default function StudentDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       queryClient.invalidateQueries({ queryKey: ['transactions'] })
       setShowPaymentForm(false)
+      setPaymentConfirmationOpen(false)
+      setPendingPaymentData(null)
       reset()
       showToast('Payment recorded successfully!', 'success')
     },
@@ -240,8 +242,7 @@ export default function StudentDetailPage() {
       notes: pendingPaymentData.notes,
       isAdvance: pendingPaymentData.isAdvance,
     })
-    setPaymentConfirmationOpen(false)
-    setPendingPaymentData(null)
+    // Do not close here. Wait for mutation success.
   }
 
 
