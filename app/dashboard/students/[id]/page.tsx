@@ -7,10 +7,10 @@ import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -139,20 +139,6 @@ export default function StudentDetailPage() {
       const response = await api.post('/residential/payments/bulk', data)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['student-due-status', studentId] })
-      queryClient.invalidateQueries({ queryKey: ['student', studentId] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
-      queryClient.invalidateQueries({ queryKey: ['transactions'] })
-      setShowPaymentForm(false)
-      setPaymentConfirmationOpen(false)
-      setPendingPaymentData(null)
-      reset()
-      showToast('Payment recorded successfully!', 'success')
-    },
-    onError: (error: any) => {
-      showToast(error.response?.data?.message || 'Failed to record payment', 'error')
-    },
   })
 
   const checkoutMutation = useMutation({
@@ -227,22 +213,38 @@ export default function StudentDetailPage() {
     setPaymentConfirmationOpen(true)
   }
 
-  const handleConfirmPayment = () => {
+  const handleConfirmPayment = async () => {
     if (!pendingPaymentData) return
 
-    paymentMutation.mutate({
-      studentId,
-      rentAmount: pendingPaymentData.rentAmount ? parseFloat(pendingPaymentData.rentAmount) : 0,
-      securityAmount: pendingPaymentData.securityAmount ? parseFloat(pendingPaymentData.securityAmount) : 0,
-      unionFeeAmount: pendingPaymentData.unionFeeAmount ? parseFloat(pendingPaymentData.unionFeeAmount) : 0,
-      otherAmount: pendingPaymentData.otherAmount ? parseFloat(pendingPaymentData.otherAmount) : 0,
-      billingMonth: pendingPaymentData.rentAmount && parseFloat(pendingPaymentData.rentAmount) > 0 && !pendingPaymentData.isAdvance ? pendingPaymentData.billingMonth : undefined,
-      paymentMethod: pendingPaymentData.paymentMethod,
-      transactionId: pendingPaymentData.transactionId,
-      notes: pendingPaymentData.notes,
-      isAdvance: pendingPaymentData.isAdvance,
-    })
-    // Do not close here. Wait for mutation success.
+    try {
+      await paymentMutation.mutateAsync({
+        studentId,
+        rentAmount: pendingPaymentData.rentAmount ? parseFloat(pendingPaymentData.rentAmount) : 0,
+        securityAmount: pendingPaymentData.securityAmount ? parseFloat(pendingPaymentData.securityAmount) : 0,
+        unionFeeAmount: pendingPaymentData.unionFeeAmount ? parseFloat(pendingPaymentData.unionFeeAmount) : 0,
+        otherAmount: pendingPaymentData.otherAmount ? parseFloat(pendingPaymentData.otherAmount) : 0,
+        billingMonth: pendingPaymentData.rentAmount && parseFloat(pendingPaymentData.rentAmount) > 0 && !pendingPaymentData.isAdvance ? pendingPaymentData.billingMonth : undefined,
+        paymentMethod: pendingPaymentData.paymentMethod,
+        transactionId: pendingPaymentData.transactionId,
+        notes: pendingPaymentData.notes,
+        isAdvance: pendingPaymentData.isAdvance,
+      })
+
+      // Success handling
+      queryClient.invalidateQueries({ queryKey: ['student-due-status', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['student', studentId] })
+      queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      
+      setShowPaymentForm(false)
+      setPaymentConfirmationOpen(false)
+      setPendingPaymentData(null)
+      reset()
+      showToast('Payment recorded successfully!', 'success')
+    } catch (error: any) {
+      console.error('Payment failed', error)
+      showToast(error.response?.data?.message || 'Failed to record payment', 'error')
+    }
   }
 
 
