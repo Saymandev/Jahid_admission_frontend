@@ -454,12 +454,14 @@ export default function StudentsPage() {
                           onClick={() => {
                             let bedValue = student.bedName || student.bedNumber.toString()
                             
-                            // If student has numeric bedNumber (e.g., 1) but no bedName, 
-                            // and the room has named beds (e.g., "Bed 1"), try to map it.
-                            if (!student.bedName && student.roomId && student.roomId.beds && student.roomId.beds.length > 0) {
+                            // Try to map numeric bedNumber (e.g., 1) to bedName (e.g., "Bed 1") for legacy students
+                            // We look up the room in the `rooms` list because student.roomId might not have the populated beds array
+                            const existingRoom = rooms.find((r: any) => r._id === (student.roomId?._id || student.roomId))
+                            
+                            if (!student.bedName && existingRoom && existingRoom.beds && existingRoom.beds.length > 0) {
                               const numericBed = parseInt(student.bedNumber.toString())
-                              if (!isNaN(numericBed) && numericBed > 0 && numericBed <= student.roomId.beds.length) {
-                                bedValue = student.roomId.beds[numericBed - 1].name
+                              if (!isNaN(numericBed) && numericBed > 0 && numericBed <= existingRoom.beds.length) {
+                                bedValue = existingRoom.beds[numericBed - 1].name
                               }
                             }
 
