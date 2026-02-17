@@ -465,6 +465,7 @@ export default function StudentsPage() {
                               }
                             }
 
+                            setEditingStudent(student)
                             reset({
                               name: student.name,
                               phone: student.phone,
