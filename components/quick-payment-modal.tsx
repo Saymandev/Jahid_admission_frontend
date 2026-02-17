@@ -19,6 +19,10 @@ interface Student {
   studentId: string
   name: string
   monthlyRent: number
+  roomId?: {
+    _id: string
+    name: string
+  }
 }
 
 interface QuickPaymentModalProps {
@@ -70,7 +74,16 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
         const response = await api.get('/residential/students', {
           params: { search: searchQuery, limit: 10, status: 'active' }
         })
-        setSearchResults(response.data.data || [])
+        const students: Student[] = response.data.data || []
+
+        // Client-side Sort by Room Name
+        students.sort((a, b) => {
+          const roomA = a.roomId?.name || ''
+          const roomB = b.roomId?.name || ''
+          return roomA.localeCompare(roomB, undefined, { numeric: true })
+        })
+
+        setSearchResults(students)
       } catch (error) {
         console.error('Search failed', error)
       } finally {
@@ -187,7 +200,12 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
                   >
                     <div>
                       <p className="font-semibold text-sm">{s.name}</p>
-                      <p className="text-xs text-secondary">ID: {s.studentId}</p>
+                      <div className="flex gap-2 text-xs text-secondary">
+                        <span>ID: {s.studentId}</span>
+                        {s.roomId && (
+                           <span className="font-medium text-primary">Room: {s.roomId.name}</span>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-medium text-primary">{s.monthlyRent} BDT</p>

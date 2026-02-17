@@ -107,11 +107,20 @@ export default function SearchPage() {
     // Search students
     if (students && Array.isArray(students)) {
       students.forEach((student: any) => {
+        // Specific search logic
+        const matchesName = student?.name?.toLowerCase().includes(lowerQuery)
+        const matchesStudentId = student?.studentId?.toLowerCase().includes(lowerQuery)
+        const matchesPhone = student?.phone === query || student?.phone?.includes(query)
+        // Check for room name match (partial is okay for search, but prefer exact for short numbers)
+        const matchesRoom = student?.roomId?.name?.toLowerCase().includes(lowerQuery)
+        
+        // If query looks like a phone number (digits only, > 5 chars), prioritize phone search
+        // This prevents searching for "201" (room) from filtering by phone number "017...201"
+        const isPhoneQuery = /^\d+$/.test(query) && query.length > 5
+        
         if (
-          student?.name?.toLowerCase().includes(lowerQuery) ||
-          student?.studentId?.toLowerCase().includes(lowerQuery) ||
-          student?.phone?.includes(query) ||
-          student?.roomId?.name?.toLowerCase().includes(lowerQuery)
+             (isPhoneQuery && matchesPhone) || // Phone priority
+             (!isPhoneQuery && (matchesName || matchesStudentId || matchesRoom)) // Name/ID/Room for text/short numbers
         ) {
           results.push({
             type: 'student',
@@ -151,11 +160,17 @@ export default function SearchPage() {
     // Search coaching admissions
     if (coaching && Array.isArray(coaching)) {
       coaching.forEach((admission: any) => {
+        const matchesName = admission?.studentName?.toLowerCase().includes(lowerQuery)
+        const matchesCourse = admission?.course?.toLowerCase().includes(lowerQuery)
+        const matchesBatch = admission?.batch?.toLowerCase().includes(lowerQuery)
+        const matchesPhone = admission?.phone?.includes(query)
+
+        // Same logic: if it looks like a phone number, prioritize phone
+        const isPhoneQuery = /^\d+$/.test(query) && query.length > 5
+
         if (
-          admission?.studentName?.toLowerCase().includes(lowerQuery) ||
-          admission?.course?.toLowerCase().includes(lowerQuery) ||
-          admission?.batch?.toLowerCase().includes(lowerQuery) ||
-          admission?.phone?.includes(query)
+          (isPhoneQuery && matchesPhone) ||
+          (!isPhoneQuery && (matchesName || matchesCourse || matchesBatch))
         ) {
           results.push({
             type: 'coaching',
