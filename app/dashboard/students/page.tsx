@@ -27,8 +27,17 @@ interface Student {
   roomId: {
     _id: string
     name: string
+    beds?: {
+      name: string
+    }[]
   }
   bedNumber: number
+  bedName?: string
+  guardianName?: string
+  guardianPhone?: string
+  joiningDate?: string
+  securityDeposit?: number
+  unionFee?: number
   monthlyRent: number
   status: 'active' | 'left'
 }
@@ -427,14 +436,28 @@ export default function StudentsPage() {
                           size="sm"
                           className="border-primary/30 text-primary hover:bg-primary/5"
                           onClick={() => {
-                            setEditingStudent(student)
+                            let bedValue = student.bedName || student.bedNumber.toString()
+                            
+                            // If student has numeric bedNumber (e.g., 1) but no bedName, 
+                            // and the room has named beds (e.g., "Bed 1"), try to map it.
+                            if (!student.bedName && student.roomId && student.roomId.beds && student.roomId.beds.length > 0) {
+                              const numericBed = parseInt(student.bedNumber.toString())
+                              if (!isNaN(numericBed) && numericBed > 0 && numericBed <= student.roomId.beds.length) {
+                                bedValue = student.roomId.beds[numericBed - 1].name
+                              }
+                            }
+
                             reset({
                               name: student.name,
                               phone: student.phone,
+                              guardianName: student.guardianName,
+                              guardianPhone: student.guardianPhone,
                               roomId: student.roomId?._id,
-                              bedNumber: student.bedNumber.toString(),
+                              bedNumber: bedValue, 
                               monthlyRent: student.monthlyRent?.toString(),
-                              joiningDate: new Date().toISOString().split('T')[0], // Fallback or handle null
+                              joiningDate: student.joiningDate ? new Date(student.joiningDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                              securityDeposit: student.securityDeposit?.toString(),
+                              unionFee: student.unionFee?.toString(),
                             })
                             setShowForm(true)
                           }}

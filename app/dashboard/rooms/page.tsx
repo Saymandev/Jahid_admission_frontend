@@ -767,7 +767,7 @@ export default function RoomsPage() {
                 <div className="bg-muted/30 p-3 rounded-lg flex flex-col items-center justify-center border">
                   <span className="text-[10px] uppercase font-bold text-secondary mb-1">Available</span>
                   <span className="text-lg font-bold">
-                    {selectedRoom?.beds?.filter(b => !b.isOccupied).length} / {selectedRoom?.totalBeds}
+                    {Math.max(0, (selectedRoom?.totalBeds || 0) - (selectedRoom?.beds?.slice(0, selectedRoom?.totalBeds).filter(b => b.isOccupied).length || 0))} / {selectedRoom?.totalBeds}
                   </span>
                 </div>
               </div>
@@ -775,7 +775,7 @@ export default function RoomsPage() {
               <div className="space-y-3">
                 <Label className="text-sm font-bold">Bed Appointments</Label>
                 <div className="grid grid-cols-1 gap-2 max-h-[300px] overflow-y-auto pr-2">
-                  {selectedRoom?.beds?.map((bed, idx) => (
+                  {selectedRoom?.beds?.slice(0, selectedRoom.totalBeds).map((bed, idx) => (
                     <div
                       key={idx}
                       className={cn(
