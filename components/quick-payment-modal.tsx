@@ -171,7 +171,7 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
       notes: pendingData.notes || 'Quick Payment',
       isAdvance: pendingData.isAdvance,
     })
-    setShowConfirm(false)
+    // Do NOT close here. Wait for success/error.
   }
 
   return (
