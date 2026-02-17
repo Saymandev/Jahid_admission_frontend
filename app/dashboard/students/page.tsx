@@ -120,8 +120,24 @@ export default function StudentsPage() {
   }, [rooms, selectedRoomId])
 
   const availableBeds = useMemo(() => {
-    return selectedRoom?.beds?.filter((bed: any) => !bed.isOccupied) || []
-  }, [selectedRoom])
+    return selectedRoom?.beds?.filter((bed: any) => {
+      // If the bed is not occupied, it's available
+      if (!bed.isOccupied) return true;
+      
+      // If we are editing a student, and this bed belongs to the student, it should be available
+      // Check bedName first (new system), then mapped bedNumber (legacy)
+      if (editingStudent && editingStudent.roomId?._id === selectedRoom._id) {
+         if (editingStudent.bedName && bed.name === editingStudent.bedName) return true;
+         // Handle legacy case: student has bedNumber but no bedName
+         if (!editingStudent.bedName && editingStudent.bedNumber) {
+            // Check if this bed corresponds to the numeric index
+            const bedIndex = parseInt(bed.name.split(' ').pop() || '0');
+            if (bedIndex === editingStudent.bedNumber) return true;
+         }
+      }
+      return false;
+    }) || []
+  }, [selectedRoom, editingStudent])
 
   // Reset bed and monthly rent when room changes
   useEffect(() => {
