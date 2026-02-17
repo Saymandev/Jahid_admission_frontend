@@ -100,7 +100,7 @@ export default function StudentsPage() {
     },
   })
 
-  const rooms = roomsData?.data || []
+  const rooms = useMemo(() => roomsData?.data || [], [roomsData])
 
   const selectedRoomId = watch('roomId')
   const selectedBedName = watch('bedNumber')
@@ -644,7 +644,7 @@ export default function StudentsPage() {
                           ))}
                         </Select>
                         {!!editingStudent && (
-                           <p className="text-xs text-primary mt-1">Changing the bed will update the student's location. The old bed will be freed.</p>
+                           <p className="text-xs text-primary mt-1">Changing the bed will update the student&apos;s location. The old bed will be freed.</p>
                         )}
                         {availableBeds.length === 0 && !editingStudent && (
                           <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">

@@ -126,7 +126,7 @@ export default function CoachingPage() {
     },
   })
 
-  const admissions = admissionsData?.data || []
+  const admissions = useMemo(() => admissionsData?.data || [], [admissionsData])
   const totalPages = admissionsData?.totalPages || 0
   const totalAdmissions = admissionsData?.total || 0
 

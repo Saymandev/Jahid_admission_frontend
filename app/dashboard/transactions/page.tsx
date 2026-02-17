@@ -163,7 +163,7 @@ export default function TransactionsPage() {
   }, [searchQuery, typeFilter, userFilter, dateFilter, startDate, endDate])
 
   // Use users from query instead of local state
-  const usersForFilter = usersData || []
+  const usersForFilter = useMemo(() => usersData || [], [usersData])
   const selectedUserName = useMemo(() => {
     if (!userFilter) return null
     const user = usersForFilter.find((u: any) => u._id === userFilter)

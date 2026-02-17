@@ -74,10 +74,11 @@ export default function SearchPage() {
   })
 
   // Extract data arrays from paginated responses
-  const rooms = roomsData?.data || roomsData || []
-  const students = studentsData?.data || studentsData || []
-  const transactions = transactionsData || []
-  const coaching = coachingData?.data || coachingData || []
+  // Extract data arrays from paginated responses
+  const rooms = useMemo(() => roomsData?.data || roomsData || [], [roomsData])
+  const students = useMemo(() => studentsData?.data || studentsData || [], [studentsData])
+  const transactions = useMemo(() => transactionsData || [], [transactionsData])
+  const coaching = useMemo(() => coachingData?.data || coachingData || [], [coachingData])
 
   const searchResults = useMemo(() => {
     if (!query.trim()) return []
