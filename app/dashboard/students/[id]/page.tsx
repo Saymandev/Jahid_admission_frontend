@@ -7,10 +7,10 @@ import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -240,10 +240,17 @@ export default function StudentDetailPage() {
       setPaymentConfirmationOpen(false)
       setPendingPaymentData(null)
       reset()
-      showToast('Payment recorded successfully!', 'success')
+      
+      try {
+        showToast('Payment recorded successfully!', 'success')
+      } catch (e) {
+        console.error('Toast failed', e)
+      }
     } catch (error: any) {
       console.error('Payment failed', error)
       showToast(error.response?.data?.message || 'Failed to record payment', 'error')
+      // Ensure confirmation modal closes even on error, so user can retry or cancel
+      setPaymentConfirmationOpen(false) 
     }
   }
 

@@ -258,38 +258,12 @@ export default function StudentsPage() {
       const response = await api.post('/residential/students', data)
       return response.data
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] })
-      queryClient.invalidateQueries({ queryKey: ['rooms'] })
-      setShowForm(false)
-      setFoundStudent(null)
-      reset({
-        joiningDate: new Date().toISOString().split('T')[0],
-      })
-      showToast('Student created successfully!', 'success')
-    },
-    onError: (error: any) => {
-      showToast(error.response?.data?.message || 'Failed to create student', 'error')
-    },
   })
 
   const updateMutation = useMutation({
     mutationFn: async (data: any) => {
       if (!editingStudent) return
       return api.patch(`/residential/students/${editingStudent._id}`, data)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['students'] })
-      queryClient.invalidateQueries({ queryKey: ['rooms'] })
-      setShowForm(false)
-      setEditingStudent(null)
-      reset({
-        joiningDate: new Date().toISOString().split('T')[0],
-      })
-      showToast('Student updated successfully!', 'success')
-    },
-    onError: (error: any) => {
-      showToast(error.response?.data?.message || 'Failed to update student', 'error')
     },
   })
 
@@ -322,10 +296,27 @@ export default function StudentsPage() {
       bedName,
     }
 
-    if (editingStudent) {
-      updateMutation.mutate(payload)
-    } else {
-      createMutation.mutate(payload)
+    try {
+      if (editingStudent) {
+        await updateMutation.mutateAsync(payload)
+        showToast('Student updated successfully!', 'success')
+      } else {
+        await createMutation.mutateAsync(payload)
+        showToast('Student created successfully!', 'success')
+      }
+
+      // Success cleanup
+      queryClient.invalidateQueries({ queryKey: ['students'] })
+      queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      setShowForm(false)
+      setEditingStudent(null)
+      setFoundStudent(null)
+      reset({
+        joiningDate: new Date().toISOString().split('T')[0],
+      })
+    } catch (error: any) {
+      console.error('Submission failed', error)
+      showToast(error.response?.data?.message || 'Failed to save student', 'error')
     }
   }
 
