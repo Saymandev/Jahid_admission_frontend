@@ -196,7 +196,7 @@ export function exportAdmissionReceipt(admission: any, payments: any[]) {
     autoTable(doc, {
       head: [['Date', 'Amount', 'Method', 'Transaction ID']],
       body: payments.map((p: any) => [
-        new Date(p.createdAt).toLocaleDateString(),
+        new Date(p.paymentDate || p.createdAt).toLocaleDateString(),
         p.paidAmount.toLocaleString(),
         p.paymentMethod,
         p.transactionId || 'N/A',
