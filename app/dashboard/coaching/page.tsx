@@ -52,6 +52,7 @@ type PaymentFormData = {
   paymentMethod: 'cash' | 'bkash' | 'bank'
   transactionId?: string
   notes?: string
+  paymentDate?: string
 }
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -896,10 +897,12 @@ export default function CoachingPage() {
                     <Input id="paidAmount" type="number" {...registerAdmission('paidAmount')} />
                   </div>
                 )}
-                <div className="space-y-2">
-                  <Label htmlFor="admissionDate">Admission Date *</Label>
-                  <Input id="admissionDate" type="date" {...registerAdmission('admissionDate')} disabled={!!editingAdmission} />
-                </div>
+                {isAdmin && (
+                  <div className="space-y-2">
+                    <Label htmlFor="admissionDate">Admission Date *</Label>
+                    <Input id="admissionDate" type="date" {...registerAdmission('admissionDate')} disabled={!!editingAdmission} />
+                  </div>
+                )}
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t">
@@ -1034,6 +1037,18 @@ export default function CoachingPage() {
                 <Label htmlFor="notes">Notes (Optional)</Label>
                 <Input id="notes" {...registerPayment('notes')} />
               </div>
+              {isAdmin && (
+                <div className="space-y-2">
+                  <Label htmlFor="paymentDate">Payment Date (Backdate)</Label>
+                  <Input 
+                    id="paymentDate" 
+                    type="date" 
+                    {...registerPayment('paymentDate')} 
+                    defaultValue={new Date().toISOString().split('T')[0]}
+                  />
+                  <p className="text-xs text-secondary">Leave as today for current payments, or select past date.</p>
+                </div>
+              )}
               <div className="flex justify-end gap-2 pt-4">
                 <Button variant="outline" type="button" onClick={() => setShowPaymentForm(false)}>Cancel</Button>
                 <Button type="submit" disabled={paymentMutation.isPending}>Record Payment</Button>
@@ -1110,6 +1125,12 @@ export default function CoachingPage() {
                   <div className="flex justify-between">
                     <span>Trx ID:</span>
                     <span className="font-medium">{pendingPaymentData.transactionId}</span>
+                  </div>
+                )}
+                {pendingPaymentData.paymentDate && (
+                  <div className="flex justify-between">
+                    <span>Date:</span>
+                    <span className="font-medium">{new Date(pendingPaymentData.paymentDate).toLocaleDateString()}</span>
                   </div>
                 )}
               </div>

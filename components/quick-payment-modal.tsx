@@ -9,6 +9,7 @@ import { Select } from '@/components/ui/select'
 import api from '@/lib/api'
 import { showToast } from '@/lib/toast'
 import { bulkPaymentSchema } from '@/lib/validations'
+import { useAuthStore } from '@/store/auth-store'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
@@ -41,10 +42,12 @@ type PaymentFormData = {
   transactionId?: string
   notes?: string
   isAdvance?: boolean
+  paymentDate?: string
 }
 
 export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: QuickPaymentModalProps) {
   const queryClient = useQueryClient()
+  const user = useAuthStore((state) => state.user)
   const [activeStudent, setActiveStudent] = useState<Student | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Student[]>([])
@@ -127,6 +130,7 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
         billingMonth: new Date().toISOString().slice(0, 7),
         paymentMethod: 'cash',
         isAdvance: false,
+        paymentDate: new Date().toISOString().split('T')[0],
       })
     }
   }, [activeStudent, isOpen, reset])
@@ -159,6 +163,7 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
         transactionId: pendingData.transactionId,
         notes: pendingData.notes || 'Quick Payment',
         isAdvance: pendingData.isAdvance,
+        paymentDate: pendingData.paymentDate,
       })
 
       // Success handling
@@ -180,7 +185,7 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {activeStudent ? `Quick Payment - ${activeStudent.name}` : 'Find Student for Quick Rent'}
@@ -247,7 +252,34 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
               </Button>
             )}
             
+            {/* Student Info */}
+            <div className="bg-muted/30 p-3 rounded-lg border">
+              <div className="font-bold">{activeStudent.name}</div>
+              <div className="text-sm text-secondary">ID: {activeStudent.studentId}</div>
+              {activeStudent.roomId && (
+                <div className="text-xs text-secondary mt-1">
+                  Room: {activeStudent.roomId.name}
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
+                 {/* Admin Only: Backdate Payment */}
+                 {user?.role === 'admin' && (
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="paymentDate">Payment Date (Backdate)</Label>
+                    <Input
+                      id="paymentDate"
+                      type="date"
+                      {...register('paymentDate')}
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Leave as today for normal payments, or select a past date.
+                    </p>
+                  </div>
+                )}
+                
               <div className="space-y-2">
                 <Label htmlFor="rentAmount">Rent Amount (BDT)</Label>
                 <Input
@@ -369,6 +401,11 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
                {pendingData?.isAdvance && (
                 <div className="mt-2 text-xs text-primary font-medium">
                   * Marked as Advance Payment
+                </div>
+              )}
+               {pendingData?.paymentDate && (
+                <div className="mt-2 text-xs text-secondary font-medium border-t pt-1">
+                  Payment Date: {new Date(pendingData.paymentDate).toLocaleDateString()}
                 </div>
               )}
             </div>

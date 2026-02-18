@@ -38,6 +38,7 @@ type PaymentFormData = {
   transactionId?: string
   notes?: string
   isAdvance?: boolean
+  paymentDate?: string
 }
 
 
@@ -999,6 +1000,22 @@ export default function StudentDetailPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit(onPaymentSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
+                 {/* Admin Only: Backdate Payment */}
+                 {user?.role === 'admin' && (
+                  <div className="space-y-2 col-span-2">
+                    <Label htmlFor="paymentDate">Payment Date (Backdate)</Label>
+                    <Input
+                      id="paymentDate"
+                      type="date"
+                      {...register('paymentDate')}
+                      defaultValue={new Date().toISOString().split('T')[0]}
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Leave as today for normal payments, or select a past date.
+                    </p>
+                  </div>
+                )}
+                
                 <div className="space-y-2">
                   <Label htmlFor="rentAmount">Rent Amount (BDT)</Label>
                   <Input
