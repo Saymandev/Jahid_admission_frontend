@@ -29,6 +29,7 @@ interface Transaction {
   paymentMethod: string
   billingMonth?: string
   course?: string
+  paymentDate?: string
   createdAt: string
   updatedAt?: string
   recordedBy?: {
@@ -39,36 +40,24 @@ interface Transaction {
 }
 
 export default function TransactionsPage() {
-  const user = useAuthStore((state) => state.user)
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'residential' | 'coaching'>('all')
-  const [page, setPage] = useState(1)
-  const pageSize = 10
-
-  // Date and time filters
+  const [userFilter, setUserFilter] = useState('')
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [userFilter, setUserFilter] = useState('')
-  const [availableUsers, setAvailableUsers] = useState<Array<{ _id: string; name: string; email: string }>>([])
-  
+  const [txnToDelete, setTxnToDelete] = useState<{ id: string; type: 'residential' | 'coaching' } | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [txnToDelete, setTxnToDelete] = useState<{ id: string, type: 'residential' | 'coaching' } | null>(null)
-
-  const isAdmin = user?.role === 'admin'
+  
   const queryClient = useQueryClient()
+  const { user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
 
-  const { data: transactionsData, isLoading, refetch } = useQuery<{
-    data: Transaction[]
-    total: number
-    totalAmount: number
-    page: number
-    limit: number
-    totalPages: number
-  }>({
-    queryKey: ['transactions', page, searchQuery, typeFilter, userFilter, dateFilter, startDate, endDate],
-    enabled: isAdmin,
-    refetchOnWindowFocus: true,
+  const { data: transactionsData, isLoading } = useQuery({
+    queryKey: ['transactions', page, pageSize, searchQuery, typeFilter, userFilter, dateFilter, startDate, endDate],
+    enabled: !!user,
     queryFn: async () => {
       const params = new URLSearchParams()
       params.append('page', page.toString())
@@ -76,26 +65,32 @@ export default function TransactionsPage() {
       if (searchQuery) params.append('search', searchQuery)
       if (typeFilter !== 'all') params.append('typeFilter', typeFilter)
       if (userFilter) params.append('userFilter', userFilter)
-      
-      if (dateFilter !== 'all') {
-        if (dateFilter === 'custom') {
-            if (startDate) params.append('startDate', startDate)
-            if (endDate) params.append('endDate', endDate)
-        } else {
-            const now = new Date()
-            const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-            const weekStart = new Date(todayStart)
-            weekStart.setDate(weekStart.getDate() - 7)
-            const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-            
-            if (dateFilter === 'today') params.append('startDate', todayStart.toISOString())
-            if (dateFilter === 'week') params.append('startDate', weekStart.toISOString())
-            if (dateFilter === 'month') params.append('startDate', monthStart.toISOString())
-        }
+
+      let start = startDate
+      let end = endDate
+
+      if (dateFilter === 'today') {
+        const today = new Date()
+        start = today.toISOString().split('T')[0]
+        end = start
+      } else if (dateFilter === 'week') {
+        const today = new Date()
+        const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+        start = lastWeek.toISOString().split('T')[0]
+        end = today.toISOString().split('T')[0]
+      } else if (dateFilter === 'month') {
+        const today = new Date()
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+        start = firstDay.toISOString().split('T')[0]
+        end = lastDay.toISOString().split('T')[0]
       }
 
+      if (start) params.append('startDate', start)
+      if (end) params.append('endDate', end)
+
       const response = await api.get(`/residential/transactions?${params.toString()}`)
-      const { data, total, totalAmount, totalPages } = response.data
+      const { data, total, totalAmount, page: responsePage, limit, totalPages } = response.data
 
       return {
         data: data.map((t: any) => ({
@@ -105,6 +100,7 @@ export default function TransactionsPage() {
             studentName: t.studentName,
             admissionStudentName: t.source === 'coaching' ? t.studentName : undefined,
             recordedBy: t.recordedBy,
+            paymentDate: t.paymentDate,
             updatedAt: t.updatedAt || t.createdAt,
         })),
         total,
@@ -441,7 +437,7 @@ export default function TransactionsPage() {
                           {txn.paymentMethod}
                         </p>
                         <p className="text-xs text-secondary mt-1">
-                          Created: {new Date(txn.createdAt).toLocaleDateString()} {new Date(txn.createdAt).toLocaleTimeString()}
+                          Date: {new Date(txn.paymentDate || txn.createdAt).toLocaleDateString()}
                         </p>
                         {txn.updatedAt && txn.updatedAt !== txn.createdAt && (
                           <p className="text-xs text-secondary">

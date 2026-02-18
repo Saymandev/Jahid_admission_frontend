@@ -41,6 +41,7 @@ interface TransactionDetails {
     name: string
     email: string
   }
+  paymentDate?: string
   createdAt: string
   updatedAt: string
 }
@@ -236,6 +237,12 @@ export default function TransactionDetailPage() {
                   <span className="font-medium">{txn.transactionId}</span>
                 </div>
               )}
+              <div className="flex justify-between">
+                <span className="text-secondary">Payment Date</span>
+                <span className="font-medium">
+                  {new Date(txn.paymentDate || txn.createdAt).toLocaleDateString()}
+                </span>
+              </div>
             </CardContent>
           </Card>
 

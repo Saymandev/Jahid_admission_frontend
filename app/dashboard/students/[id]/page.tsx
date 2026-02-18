@@ -7,10 +7,10 @@ import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -1145,7 +1145,7 @@ export default function StudentDetailPage() {
                                 )}
                               </div>
                               <div className="text-xs text-secondary mt-1">
-                                Date: {new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                Date: {new Date(p.paymentDate || p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                               </div>
                               {p.notes && <div className="text-[11px] italic text-secondary mt-1">{p.notes}</div>}
                             </div>
@@ -1256,7 +1256,7 @@ export default function StudentDetailPage() {
                                         <div key={rec._id || idx} className="flex justify-between items-center text-[11px] py-1 border-b border-black/5 last:border-0 hover:bg-black/5 transition-colors px-1 group">
                                           <div className="flex flex-col">
                                             <span className="font-medium">
-                                              {new Date(rec.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                              {new Date(rec.paymentDate || rec.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                                             </span>
                                             <span className="text-[9px] opacity-70 capitalize">{rec.paymentMethod}</span>
                                           </div>

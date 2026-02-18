@@ -42,7 +42,7 @@ export function exportStudentLedger(student: any, payments: any[], extraPayments
     doc.text('Other Payments (Security, Fees, etc.)', 14, finalY + 15)
     
     const extraTableData = extraPayments.map((p: any) => [
-      new Date(p.createdAt).toLocaleDateString(),
+      new Date(p.paymentDate || p.createdAt).toLocaleDateString(),
       p.type.charAt(0).toUpperCase() + p.type.slice(1).replace('_', ' '),
       p.paidAmount.toLocaleString(),
       p.paymentMethod.toUpperCase(),
