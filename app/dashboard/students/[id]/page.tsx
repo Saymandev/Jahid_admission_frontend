@@ -7,10 +7,10 @@ import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -314,8 +314,7 @@ export default function StudentDetailPage() {
             {student.status === 'left' && user?.role === 'admin' && (
               <Button
                 variant="default"
-                disabled={true}
-                title="Reactivation is currently disabled"
+                onClick={() => setShowReactivateForm(true)}
               >
                 Reactivate Student
               </Button>
@@ -869,6 +868,7 @@ export default function StudentDetailPage() {
                   const joiningDate = formData.get('joiningDate') as string
                   const monthlyRent = formData.get('monthlyRent') as string
                   const securityDeposit = formData.get('securityDeposit') as string
+                  const unionFee = formData.get('unionFee') as string
 
                   const selectedRoom = rooms?.find((r: any) => r._id === roomId)
                   const selectedBed = selectedRoom?.beds?.find((b: any) => b.name === bedNumber || String(b) === bedNumber)
@@ -880,6 +880,7 @@ export default function StudentDetailPage() {
                     joiningDate,
                     monthlyRent: monthlyRent ? parseFloat(monthlyRent) : undefined,
                     securityDeposit: securityDeposit ? parseFloat(securityDeposit) : undefined,
+                    unionFee: unionFee ? parseFloat(unionFee) : undefined,
                   })
                 }}
                 className="space-y-4"
@@ -943,14 +944,27 @@ export default function StudentDetailPage() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="reactivate-securityDeposit">Security Deposit (BDT)</Label>
+                    <Label htmlFor="reactivate-securityDeposit">Security Deposit Amount (BDT)</Label>
                     <Input
                       id="reactivate-securityDeposit"
                       name="securityDeposit"
                       type="number"
                       min="0"
                       step="0.01"
-                      defaultValue={student.securityDeposit || 0}
+                      defaultValue={0}
+                      placeholder="Enter new security deposit if applicable"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reactivate-unionFee">Union Fee (BDT)</Label>
+                    <Input
+                      id="reactivate-unionFee"
+                      name="unionFee"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      defaultValue={0}
+                      placeholder="Enter union fee if applicable"
                     />
                   </div>
                 </div>
