@@ -112,4 +112,5 @@ export const admissionPaymentSchema = z.object({
   paymentMethod: z.enum(['cash', 'bkash', 'bank', 'adjustment']),
   transactionId: z.string().optional(),
   notes: z.string().optional(),
+  paymentDate: z.string().optional(),
 })
