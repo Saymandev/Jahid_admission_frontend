@@ -286,6 +286,9 @@ export default function CoachingPage() {
         phone: pendingAdmissionData.phone,
         guardianName: pendingAdmissionData.guardianName,
         guardianPhone: pendingAdmissionData.guardianPhone,
+        course: pendingAdmissionData.course,
+        batch: pendingAdmissionData.batch,
+        totalFee: parseFloat(pendingAdmissionData.totalFee),
       })
     } else {
       admissionMutation.mutate(payload)
@@ -843,14 +846,14 @@ export default function CoachingPage() {
                       </Button>
                     )}
                   </div>
-                  {createNewCourse && !editingAdmission ? (
+                  {createNewCourse ? (
                     <Input
                       id="course"
                       placeholder="Enter new course name"
                       {...registerAdmission('course')}
                     />
                   ) : (
-                    <Select id="course" {...registerAdmission('course')} disabled={!!editingAdmission}>
+                    <Select id="course" {...registerAdmission('course')}>
                       <option value="">Select Course</option>
                       {uniqueCourses.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
                     </Select>
@@ -872,14 +875,14 @@ export default function CoachingPage() {
                       </Button>
                     )}
                   </div>
-                  {createNewBatch && !editingAdmission ? (
+                  {createNewBatch ? (
                     <Input
                       id="batch"
                       placeholder="Enter new batch name"
                       {...registerAdmission('batch')}
                     />
                   ) : (
-                    <Select id="batch" {...registerAdmission('batch')} disabled={!!editingAdmission}>
+                    <Select id="batch" {...registerAdmission('batch')}>
                       <option value="">Select Batch</option>
                       {uniqueBatches.map(b => <option key={b.name} value={b.name}>{b.name}</option>)}
                     </Select>
@@ -888,7 +891,7 @@ export default function CoachingPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="totalFee">Total Fee (BDT) *</Label>
-                  <Input id="totalFee" type="number" {...registerAdmission('totalFee')} disabled={!!editingAdmission} />
+                  <Input id="totalFee" type="number" {...registerAdmission('totalFee')} />
                   {admissionErrors.totalFee && <p className="text-xs text-danger mt-1">{admissionErrors.totalFee.message}</p>}
                 </div>
                 {!editingAdmission && (
@@ -900,7 +903,7 @@ export default function CoachingPage() {
                 {isAdmin && (
                   <div className="space-y-2">
                     <Label htmlFor="admissionDate">Admission Date *</Label>
-                    <Input id="admissionDate" type="date" {...registerAdmission('admissionDate')} disabled={!!editingAdmission} />
+                    <Input id="admissionDate" type="date" {...registerAdmission('admissionDate')} />
                   </div>
                 )}
               </div>
