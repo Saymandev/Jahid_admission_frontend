@@ -7,10 +7,10 @@ import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -64,6 +64,8 @@ export default function StudentDetailPage() {
 
   const [paymentConfirmationOpen, setPaymentConfirmationOpen] = useState(false)
   const [pendingPaymentData, setPendingPaymentData] = useState<PaymentFormData | null>(null)
+  const [isPaid, setIsPaid] = useState(false)
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false)
   
   const [selectedBillingMonth, setSelectedBillingMonth] = useState(new Date().toISOString().slice(0, 7))
 
@@ -96,7 +98,36 @@ export default function StudentDetailPage() {
     setValue('billingMonth', month)
     setSelectedBillingMonth(month)
     setShowPaymentForm(true)
+    setIsPaid(false)
   }
+
+  // Check if month is already paid
+  const isAdvanceChecked = watch('isAdvance')
+  
+  useEffect(() => {
+    const checkPaymentStatus = async () => {
+      if (!studentId || !selectedBillingMonth || isAdvanceChecked) {
+        setIsPaid(false)
+        return
+      }
+
+      setIsCheckingStatus(true)
+      try {
+        const response = await api.get(`/residential/students/${studentId}/payment-status`, {
+          params: { month: selectedBillingMonth }
+        })
+        setIsPaid(response.data.isPaid)
+      } catch (error) {
+        console.error('Failed to check payment status', error)
+      } finally {
+        setIsCheckingStatus(false)
+      }
+    }
+
+    if (showPaymentForm) {
+      checkPaymentStatus()
+    }
+  }, [studentId, selectedBillingMonth, isAdvanceChecked, showPaymentForm])
 
   const { data: student } = useQuery({
     queryKey: ['student', studentId],
@@ -208,6 +239,15 @@ export default function StudentDetailPage() {
   }
 
   const isAdmin = user?.role === 'admin'
+
+  const rentAmountInput = watch('rentAmount')
+  const isStaff = user?.role === 'staff'
+  const currentMonthStr = new Date().toISOString().slice(0, 7)
+  const isFutureMonth = selectedBillingMonth ? selectedBillingMonth > currentMonthStr : false
+  const isOverPaying = student && rentAmountInput ? parseFloat(rentAmountInput) > student.monthlyRent : false
+
+  // Validation logic for button
+  const isBlocked = isStaff && (isAdvanceChecked || isFutureMonth || isOverPaying || isPaid)
 
   const onPaymentSubmit = (data: PaymentFormData) => {
     setPendingPaymentData(data)
@@ -1014,20 +1054,34 @@ export default function StudentDetailPage() {
             </DialogHeader>
             <form onSubmit={handleSubmit(onPaymentSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
-                 {/* Admin Only: Backdate Payment */}
+                 {/* Admin Only Features */}
                  {user?.role === 'admin' && (
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="paymentDate">Payment Date (Backdate)</Label>
-                    <Input
-                      id="paymentDate"
-                      type="date"
-                      {...register('paymentDate')}
-                      defaultValue={new Date().toISOString().split('T')[0]}
-                    />
-                    <p className="text-[10px] text-muted-foreground">
-                      Leave as today for normal payments, or select a past date.
-                    </p>
-                  </div>
+                  <>
+                    <div className="space-y-2 col-span-2">
+                      <Label htmlFor="paymentDate">Payment Date (Backdate)</Label>
+                      <Input
+                        id="paymentDate"
+                        type="date"
+                        {...register('paymentDate')}
+                        defaultValue={new Date().toISOString().split('T')[0]}
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Leave as today for normal payments, or select a past date.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-md col-span-2">
+                       <input
+                         type="checkbox"
+                         id="isAdvance"
+                         {...register('isAdvance')}
+                         className="w-4 h-4"
+                       />
+                       <Label htmlFor="isAdvance" className="cursor-pointer font-medium text-sm">
+                         Record Rent as Advance Payment
+                       </Label>
+                    </div>
+                  </>
                 )}
                 
                 <div className="space-y-2">
@@ -1108,11 +1162,43 @@ export default function StudentDetailPage() {
                   />
               </div>
 
-              <div className="flex justify-end gap-2">
+                {isPaid && isAdmin && (
+                  <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg animate-pulse col-span-2">
+                    <p className="text-sm font-semibold text-warning">
+                      ⚠️ Student has already paid for this month&apos;s rent. Are you sure you want to take money again?
+                    </p>
+                  </div>
+                )}
+
+                {isPaid && isStaff && (
+                  <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg col-span-2">
+                    <p className="text-sm font-semibold text-danger">
+                      ❌ Rent for this month is already paid. Staff cannot record duplicate payments.
+                    </p>
+                  </div>
+                )}
+
+                {isStaff && isOverPaying && (
+                  <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg col-span-2">
+                    <p className="text-sm font-semibold text-danger">
+                      ❌ Staff cannot take payment greater than the monthly rent.
+                    </p>
+                  </div>
+                )}
+
+                {isStaff && isFutureMonth && (
+                  <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg col-span-2">
+                    <p className="text-sm font-semibold text-danger">
+                      ❌ Staff cannot record payments for future months.
+                    </p>
+                  </div>
+                )}
+
+              <div className="flex justify-end gap-2 col-span-2">
                   <Button type="button" variant="ghost" onClick={() => setShowPaymentForm(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit">
+                  <Button type="submit" disabled={isCheckingStatus || isBlocked}>
                     Review Payment
                   </Button>
               </div>

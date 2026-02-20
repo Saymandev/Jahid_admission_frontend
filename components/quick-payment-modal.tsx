@@ -52,6 +52,8 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Student[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [isPaid, setIsPaid] = useState(false)
+  const [isCheckingStatus, setIsCheckingStatus] = useState(false)
   
   // Confirmation state
   const [showConfirm, setShowConfirm] = useState(false)
@@ -132,8 +134,47 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
         isAdvance: false,
         paymentDate: new Date().toISOString().split('T')[0],
       })
+      setIsPaid(false)
     }
   }, [activeStudent, isOpen, reset])
+
+  // Check if month is already paid
+  const selectedMonth = watch('billingMonth')
+  const isAdvanceChecked = watch('isAdvance')
+
+  useEffect(() => {
+    const checkPaymentStatus = async () => {
+      if (!activeStudent || !selectedMonth || isAdvanceChecked) {
+        setIsPaid(false)
+        return
+      }
+
+      setIsCheckingStatus(true)
+      try {
+        const response = await api.get(`/residential/students/${activeStudent._id}/payment-status`, {
+          params: { month: selectedMonth }
+        })
+        setIsPaid(response.data.isPaid)
+      } catch (error) {
+        console.error('Failed to check payment status', error)
+      } finally {
+        setIsCheckingStatus(false)
+      }
+    }
+
+    checkPaymentStatus()
+  }, [activeStudent, selectedMonth, isAdvanceChecked])
+
+  const rentAmountInput = watch('rentAmount')
+  const isAdmin = user?.role === 'admin'
+  const isStaff = user?.role === 'staff'
+
+  const currentMonthStr = new Date().toISOString().slice(0, 7)
+  const isFutureMonth = selectedMonth ? selectedMonth > currentMonthStr : false
+  const isOverPaying = activeStudent && rentAmountInput ? parseFloat(rentAmountInput) > activeStudent.monthlyRent : false
+
+  // Validation logic for button
+  const isBlocked = isStaff && (isAdvanceChecked || isFutureMonth || isOverPaying || isPaid)
 
   const paymentMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -321,17 +362,19 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
               </div>
             </div>
 
-            <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-md">
-              <input
-                type="checkbox"
-                id="isAdvance"
-                {...register('isAdvance')}
-                className="w-4 h-4"
-              />
-              <Label htmlFor="isAdvance" className="cursor-pointer font-medium text-sm">
-                Record Rent as Advance Payment
-              </Label>
-            </div>
+            {isAdmin && (
+              <div className="flex items-center gap-2 p-3 bg-primary/5 rounded-md">
+                <input
+                  type="checkbox"
+                  id="isAdvance"
+                  {...register('isAdvance')}
+                  className="w-4 h-4"
+                />
+                <Label htmlFor="isAdvance" className="cursor-pointer font-medium text-sm">
+                  Record Rent as Advance Payment
+                </Label>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -341,6 +384,7 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
                   type="month"
                   {...register('billingMonth')}
                   disabled={watch('isAdvance')}
+                  max={isStaff ? currentMonthStr : undefined}
                 />
               </div>
               <div className="space-y-2">
@@ -358,11 +402,47 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
               <Input id="transactionId" {...register('transactionId')} />
             </div>
 
+            {isPaid && isAdmin && (
+              <div className="p-3 bg-warning/10 border border-warning/30 rounded-lg animate-pulse">
+                <p className="text-sm font-semibold text-warning">
+                  ⚠️ Student has already paid for this month&apos;s rent. Are you sure you want to take money again?
+                </p>
+              </div>
+            )}
+
+            {isPaid && isStaff && (
+              <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg">
+                <p className="text-sm font-semibold text-danger">
+                  ❌ Rent for this month is already paid. Staff cannot record duplicate payments.
+                </p>
+              </div>
+            )}
+
+            {isStaff && isOverPaying && (
+              <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg">
+                <p className="text-sm font-semibold text-danger">
+                  ❌ Staff cannot take payment greater than the monthly rent.
+                </p>
+              </div>
+            )}
+
+            {isStaff && isFutureMonth && (
+              <div className="p-3 bg-danger/10 border border-danger/30 rounded-lg">
+                <p className="text-sm font-semibold text-danger">
+                  ❌ Staff cannot record payments for future months.
+                </p>
+              </div>
+            )}
+
             <div className="flex gap-3 pt-2">
               <Button variant="outline" type="button" onClick={onClose} className="flex-1">
                 Cancel
               </Button>
-              <Button type="submit" disabled={paymentMutation.isPending} className="flex-1">
+              <Button 
+                type="submit" 
+                disabled={paymentMutation.isPending || isCheckingStatus || isBlocked} 
+                className="flex-1"
+              >
                 {paymentMutation.isPending ? 'Recording...' : 'Record Payment'}
               </Button>
             </div>
