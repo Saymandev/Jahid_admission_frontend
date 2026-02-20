@@ -111,10 +111,10 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
           const dateKey = format(day, 'yyyy-MM-dd')
           const monthlyPayment = paymentMap.get(monthKey)
           
-          // Check if there are specific transaction records for THIS day
+          // Only show actual transactions (paid > 0) on specific days
           const dayRecords = monthlyPayment?.records?.filter((r: any) => {
             const rDate = r.paymentDate || r.createdAt
-            return rDate && format(parseISO(rDate), 'yyyy-MM-dd') === dateKey
+            return rDate && format(parseISO(rDate), 'yyyy-MM-dd') === dateKey && r.paidAmount > 0
           }) || []
 
           const isFirstDay = day.getDate() === 1
@@ -130,27 +130,32 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
                   onMonthSelect(monthKey)
                 }
               }}
-              className={`p-2 border rounded-md cursor-pointer hover:shadow-md transition-shadow min-h-[80px] relative ${
-                isFirstDay ? getPaymentColor(monthlyPayment) : 'bg-background hover:bg-muted/50'
-              } ${isToday ? 'ring-2 ring-primary' : ''}`}
+              className={`p-2 border rounded-md cursor-pointer hover:shadow-md transition-shadow min-h-[90px] relative ${
+                getPaymentColor(monthlyPayment)
+              } ${isToday ? 'ring-2 ring-primary bg-primary/5' : ''}`}
               title={`${format(day, 'MMM dd, yyyy')}${isFirstDay ? ` - Monthly Rent: ${monthlyRent} BDT` : ''}`}
             >
-              <div className="text-[10px] font-bold text-secondary/50 mb-1">
+              <div className="text-[10px] font-bold text-secondary/70 mb-1">
                 {format(day, 'd')}
               </div>
               
-              {isFirstDay && monthlyPayment && (
+              {isFirstDay && (
                 <div className="space-y-1">
-                  <div className="text-[10px] font-bold leading-tight uppercase opacity-70">Rent Due</div>
-                  <div className="text-xs font-bold">{monthlyPayment.dueAmount > 0 ? `${monthlyPayment.dueAmount.toLocaleString()}` : '0'}</div>
+                  <div className="text-[10px] font-bold leading-tight uppercase opacity-60">Rent</div>
+                  <div className="text-xs font-bold leading-none">{monthlyRent.toLocaleString()}</div>
+                  {monthlyPayment && monthlyPayment.dueAmount > 0 && (
+                    <div className="text-[9px] font-bold text-danger leading-none mt-1">
+                      Due: {monthlyPayment.dueAmount.toLocaleString()}
+                    </div>
+                  )}
                 </div>
               )}
 
               {dayRecords.length > 0 && (
                 <div className="mt-1 space-y-1">
                   {dayRecords.map((rec: any, idx: number) => (
-                    <div key={idx} className="p-1 bg-success/10 border border-success/20 rounded text-[9px] font-medium leading-tight">
-                      <div className="text-success uppercase font-bold text-[8px]">Paid</div>
+                    <div key={idx} className="p-1 bg-white/60 border border-success/30 rounded text-[9px] font-bold leading-tight shadow-sm">
+                      <div className="text-success uppercase text-[7px] mb-0.5">Paid</div>
                       {rec.paidAmount.toLocaleString()}
                     </div>
                   ))}
@@ -158,8 +163,8 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
               )}
 
               {willBeCoveredByAdvance && (
-                <div className="mt-1 p-1 bg-primary/10 border border-primary/20 rounded text-[9px] font-medium leading-tight animate-pulse">
-                  <div className="text-primary uppercase font-bold text-[8px]">Advance</div>
+                <div className="mt-1 p-1 bg-primary/20 border border-primary/40 rounded text-[9px] font-bold leading-tight animate-pulse shadow-sm">
+                  <div className="text-primary uppercase text-[7px] mb-0.5">Advance</div>
                   {advanceCoverage.toLocaleString()}
                 </div>
               )}
