@@ -1067,11 +1067,16 @@ export default function CoachingPage() {
         open={showConfirmAdmission}
         onOpenChange={setShowConfirmAdmission}
         onConfirm={handleConfirmAdmission}
-        title="Confirm New Admission"
+        title={editingAdmission ? 'Review Changes' : 'Confirm New Admission'}
         description={
           pendingAdmissionData ? (
             <div className="space-y-2">
-              <p>Are you sure you want to admit <strong>{pendingAdmissionData.studentName}</strong>?</p>
+              <p>
+                {editingAdmission 
+                  ? `Are you sure you want to save changes for ${editingAdmission.studentName}?`
+                  : `Are you sure you want to admit ${pendingAdmissionData.studentName}?`
+                }
+              </p>
               <div className="bg-secondary/10 p-3 rounded-md text-sm">
                  <div className="flex justify-between">
                   <span>Course:</span>
@@ -1085,7 +1090,7 @@ export default function CoachingPage() {
                   <span>Total Fee:</span>
                   <span className="font-medium">{maskCurrency(parseFloat(pendingAdmissionData.totalFee), false)}</span>
                 </div>
-                {pendingAdmissionData.paidAmount && (
+                {!editingAdmission && pendingAdmissionData.paidAmount && (
                   <div className="flex justify-between">
                     <span>Initial Payment:</span>
                     <span className="font-medium text-success">{maskCurrency(parseFloat(pendingAdmissionData.paidAmount), false)}</span>
@@ -1095,8 +1100,8 @@ export default function CoachingPage() {
             </div>
           ) : 'Are you sure you want to proceed?'
         }
-        confirmText="Confirm & Admit"
-        isLoading={admissionMutation.isPending}
+        confirmText={editingAdmission ? 'Update Admission' : 'Confirm & Admit'}
+        isLoading={admissionMutation.isPending || updateAdmissionMutation.isPending}
       />
       <ConfirmDialog
         open={showConfirmPayment}
