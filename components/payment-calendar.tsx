@@ -1,6 +1,6 @@
 'use client'
 
-import { eachDayOfInterval, endOfMonth, format, isSameDay, isSameMonth, parseISO, startOfMonth } from 'date-fns'
+import { eachDayOfInterval, endOfMonth, format, isSameDay, parseISO, startOfMonth } from 'date-fns'
 import { useState } from 'react'
 
 interface Payment {
@@ -13,6 +13,7 @@ interface Payment {
   advanceGenerated?: number
   paymentMethod?: string
   paymentDate?: string
+  records?: any[]
   status: 'paid' | 'partial' | 'unpaid'
 }
 
@@ -106,18 +107,19 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
           <div key={`empty-${i}`} className="p-2" />
         ))}
         {days.map((day) => {
-          const dayKey = format(day, 'yyyy-MM')
-          const payment = paymentMap.get(dayKey)
-          const isCurrentMonth = isSameMonth(day, selectedMonth)
-          const isToday = isSameDay(day, new Date())
-
-          if (!isCurrentMonth) {
-            return <div key={day.toString()} className="p-2" />
-          }
-
           const monthKey = format(day, 'yyyy-MM')
-          const isUnpaid = !payment || payment.status === 'unpaid' || payment.dueAmount > 0
-          const willBeCoveredByAdvance = futureMonthsWithAdvance.has(monthKey)
+          const dateKey = format(day, 'yyyy-MM-dd')
+          const monthlyPayment = paymentMap.get(monthKey)
+          
+          // Check if there are specific transaction records for THIS day
+          const dayRecords = monthlyPayment?.records?.filter((r: any) => {
+            const rDate = r.paymentDate || r.createdAt
+            return rDate && format(parseISO(rDate), 'yyyy-MM-dd') === dateKey
+          }) || []
+
+          const isFirstDay = day.getDate() === 1
+          const isToday = isSameDay(day, new Date())
+          const willBeCoveredByAdvance = isFirstDay && futureMonthsWithAdvance.has(monthKey)
           const advanceCoverage = futureMonthsWithAdvance.get(monthKey) || 0
 
           return (
@@ -128,45 +130,37 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
                   onMonthSelect(monthKey)
                 }
               }}
-              className={`p-2 border rounded-md cursor-pointer hover:shadow-md transition-shadow relative ${getPaymentColor(
-                payment
-              )} ${willBeCoveredByAdvance && !payment ? 'bg-primary/10 border-primary/40 border-dashed' : ''} ${isToday ? 'ring-2 ring-primary' : ''} ${isUnpaid ? 'hover:ring-2 hover:ring-primary' : ''}`}
-              title={`${format(day, 'MMM dd, yyyy')} - ${getPaymentStatus(payment)}${payment?.advanceApplied && payment.advanceApplied > 0 ? ' (Paid with Advance)' : ''}${willBeCoveredByAdvance ? ` (Will be covered by ${advanceCoverage.toLocaleString()} BDT advance)` : ''}${isUnpaid ? ' (Click to record payment)' : ''}`}
+              className={`p-2 border rounded-md cursor-pointer hover:shadow-md transition-shadow min-h-[80px] relative ${
+                isFirstDay ? getPaymentColor(monthlyPayment) : 'bg-background hover:bg-muted/50'
+              } ${isToday ? 'ring-2 ring-primary' : ''}`}
+              title={`${format(day, 'MMM dd, yyyy')}${isFirstDay ? ` - Monthly Rent: ${monthlyRent} BDT` : ''}`}
             >
-              <div className="text-xs font-medium flex items-center gap-1">
+              <div className="text-[10px] font-bold text-secondary/50 mb-1">
                 {format(day, 'd')}
-                {payment?.advanceApplied && payment.advanceApplied > 0 && (
-                  <svg className="w-3 h-3 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                  </svg>
-                )}
-                {willBeCoveredByAdvance && !payment && (
-                  <svg className="w-3 h-3 text-primary animate-pulse" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
-                  </svg>
-                )}
               </div>
-              {payment && (
-                <div className="text-xs mt-1">
-                  <div>Paid: {(payment.paidAmount - (payment.advanceGenerated || 0)).toLocaleString()}</div>
-                  {payment.advanceApplied && payment.advanceApplied > 0 && (
-                    <div className="text-primary font-semibold text-[10px] mt-0.5" title="Advance used to pay this month">
-                      ⚡ Applied: {payment.advanceApplied.toLocaleString()}
-                    </div>
-                  )}
-                  {payment.advanceGenerated && payment.advanceGenerated > 0 && (
-                    <div className="text-success font-semibold text-[10px] mt-0.5" title="Overpayment recorded as future advance">
-                      ✨ Extra: {payment.advanceGenerated.toLocaleString()}
-                    </div>
-                  )}
-                  {payment.dueAmount > 0 && (
-                    <div className="text-danger">Due: {payment.dueAmount.toLocaleString()}</div>
-                  )}
+              
+              {isFirstDay && monthlyPayment && (
+                <div className="space-y-1">
+                  <div className="text-[10px] font-bold leading-tight uppercase opacity-70">Rent Due</div>
+                  <div className="text-xs font-bold">{monthlyPayment.dueAmount > 0 ? `${monthlyPayment.dueAmount.toLocaleString()}` : '0'}</div>
                 </div>
               )}
-              {willBeCoveredByAdvance && !payment && (
-                <div className="text-xs mt-1 text-primary font-semibold">
-                  ⚡ Advance: {advanceCoverage.toLocaleString()}
+
+              {dayRecords.length > 0 && (
+                <div className="mt-1 space-y-1">
+                  {dayRecords.map((rec: any, idx: number) => (
+                    <div key={idx} className="p-1 bg-success/10 border border-success/20 rounded text-[9px] font-medium leading-tight">
+                      <div className="text-success uppercase font-bold text-[8px]">Paid</div>
+                      {rec.paidAmount.toLocaleString()}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {willBeCoveredByAdvance && (
+                <div className="mt-1 p-1 bg-primary/10 border border-primary/20 rounded text-[9px] font-medium leading-tight animate-pulse">
+                  <div className="text-primary uppercase font-bold text-[8px]">Advance</div>
+                  {advanceCoverage.toLocaleString()}
                 </div>
               )}
             </div>

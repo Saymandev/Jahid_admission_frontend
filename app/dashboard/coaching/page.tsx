@@ -144,6 +144,14 @@ export default function CoachingPage() {
     },
   })
 
+  const { data: metadata } = useQuery<{ courses: string[]; batches: string[] }>({
+    queryKey: ['coaching-metadata'],
+    queryFn: async () => {
+      const response = await api.get('/coaching/metadata')
+      return response.data
+    },
+  })
+
   const { data: coachingPayments } = useQuery({
     queryKey: ['coaching-payments', selectedStudentDetails?._id],
     queryFn: async () => {
@@ -190,6 +198,7 @@ export default function CoachingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
       queryClient.invalidateQueries({ queryKey: ['coaching-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['coaching-metadata'] })
       setShowAdmissionForm(false)
       resetAdmission()
       setCreateNewCourse(false)
@@ -227,6 +236,7 @@ export default function CoachingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admissions'] })
       queryClient.invalidateQueries({ queryKey: ['coaching-stats'] })
+      queryClient.invalidateQueries({ queryKey: ['coaching-metadata'] })
       setShowAdmissionForm(false)
       setEditingAdmission(null)
       resetAdmission()
@@ -375,32 +385,14 @@ export default function CoachingPage() {
     showToast(`Batch "${batchName}" cannot be deleted while it's in use`, 'warning')
   }
 
-  // Extract unique courses and batches from admissions with usage count
+  // Use metadata from backend, or fall back to empty
   const uniqueCourses = useMemo(() => {
-    if (!admissions) return []
-    const courseMap = new Map<string, number>()
-    admissions.forEach((admission: Admission) => {
-      if (admission.course && admission.course.trim() !== '') {
-        courseMap.set(admission.course, (courseMap.get(admission.course) || 0) + 1)
-      }
-    })
-    return Array.from(courseMap.entries())
-      .map(([course, count]) => ({ name: course, count }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [admissions])
+    return (metadata?.courses || []).map(c => ({ name: c, count: 0 }))
+  }, [metadata])
 
   const uniqueBatches = useMemo(() => {
-    if (!admissions) return []
-    const batchMap = new Map<string, number>()
-    admissions.forEach((admission: Admission) => {
-      if (admission.batch && admission.batch.trim() !== '') {
-        batchMap.set(admission.batch, (batchMap.get(admission.batch) || 0) + 1)
-      }
-    })
-    return Array.from(batchMap.entries())
-      .map(([batch, count]) => ({ name: batch, count }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [admissions])
+    return (metadata?.batches || []).map(b => ({ name: b, count: 0 }))
+  }, [metadata])
 
   // Reset to page 1 when search or filter changes
   useEffect(() => {
