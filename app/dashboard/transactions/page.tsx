@@ -43,6 +43,7 @@ export default function TransactionsPage() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(10)
   const [searchQuery, setSearchQuery] = useState('')
+  const [searchTerm, setSearchTerm] = useState('')
   const [typeFilter, setTypeFilter] = useState<'all' | 'residential' | 'coaching'>('all')
   const [userFilter, setUserFilter] = useState('')
   const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month' | 'custom'>('all')
@@ -158,6 +159,15 @@ export default function TransactionsPage() {
     setPage(1)
   }, [searchQuery, typeFilter, userFilter, dateFilter, startDate, endDate])
 
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchTerm)
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
   // Use users from query instead of local state
   const usersForFilter = useMemo(() => usersData || [], [usersData])
   const selectedUserName = useMemo(() => {
@@ -221,8 +231,8 @@ export default function TransactionsPage() {
           <div className="flex gap-4 flex-wrap">
             <Input
               placeholder="Search by student name or payment method..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-md flex-1"
             />
             <Select
