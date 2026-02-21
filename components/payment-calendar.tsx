@@ -158,8 +158,8 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
                     </div>
                   )}
                   {willBeCoveredByAdvance && (
-                    <div className="mt-1 p-1 bg-primary/20 border border-primary/40 rounded text-[9px] font-bold leading-tight shadow-sm animate-pulse">
-                      <div className="text-primary uppercase text-[7px] mb-0.5">Covered By Advance</div>
+                    <div className="mt-1 p-1 bg-primary border-2 border-primary-foreground/20 rounded text-[9px] font-bold text-primary-foreground leading-tight shadow-sm animate-pulse">
+                      <div className="uppercase text-[7px] mb-0.5 opacity-80">Paid in Advance</div>
                       {advanceCoverage.toLocaleString()}
                     </div>
                   )}

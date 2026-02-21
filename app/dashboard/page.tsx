@@ -16,6 +16,7 @@ interface DashboardStats {
   activeStudents: number
   residentialDue: number
   coachingDue: number
+  todayCollection?: number
 }
 
 export default function DashboardPage() {
@@ -97,7 +98,23 @@ export default function DashboardPage() {
           <p className="text-secondary mt-1">Welcome back, {user?.name}</p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <Card 
+            className="bg-primary/5 border-primary/20 hover:shadow-lg transition-all shadow-sm cursor-pointer border-2"
+            onClick={() => router.push('/dashboard/transactions')}
+          >
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-bold text-primary">Today&apos;s Total Collection</CardTitle>
+              <span className="text-2xl animate-pulse">✨</span>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-black text-primary">
+                {maskCurrency(stats?.todayCollection || 0, user?.role === 'staff')}
+              </div>
+              <p className="text-xs text-primary/70 mt-1 font-medium">Real-time Cash Flow</p>
+            </CardContent>
+          </Card>
+
           <Card 
             className="hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => router.push('/dashboard/rooms')}

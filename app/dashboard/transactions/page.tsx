@@ -73,20 +73,27 @@ export default function TransactionsPage() {
       let end = endDate
 
       if (dateFilter === 'today') {
-        const today = new Date()
-        start = today.toLocaleDateString('en-CA')
-        end = start
+        const startDay = new Date()
+        startDay.setHours(0, 0, 0, 0)
+        start = startDay.toISOString()
+        const endDay = new Date()
+        endDay.setHours(23, 59, 59, 999)
+        end = endDay.toISOString()
       } else if (dateFilter === 'week') {
-        const today = new Date()
-        const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-        start = lastWeek.toLocaleDateString('en-CA')
-        end = today.toLocaleDateString('en-CA')
+        const endDay = new Date()
+        endDay.setHours(23, 59, 59, 999)
+        const startDay = new Date(endDay.getTime() - 7 * 24 * 60 * 60 * 1000)
+        startDay.setHours(0, 0, 0, 0)
+        start = startDay.toISOString()
+        end = endDay.toISOString()
       } else if (dateFilter === 'month') {
         const today = new Date()
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        firstDay.setHours(0, 0, 0, 0)
         const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-        start = firstDay.toLocaleDateString('en-CA')
-        end = lastDay.toLocaleDateString('en-CA')
+        lastDay.setHours(23, 59, 59, 999)
+        start = firstDay.toISOString()
+        end = lastDay.toISOString()
       }
 
       if (start) params.append('startDate', start)
@@ -215,19 +222,27 @@ export default function TransactionsPage() {
       let end = endDate
 
       if (dateFilter === 'today') {
-        start = new Date().toLocaleDateString('en-CA')
-        end = start
+        const startDay = new Date()
+        startDay.setHours(0, 0, 0, 0)
+        start = startDay.toISOString()
+        const endDay = new Date()
+        endDay.setHours(23, 59, 59, 999)
+        end = endDay.toISOString()
       } else if (dateFilter === 'week') {
-        const today = new Date()
-        const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-        start = lastWeek.toLocaleDateString('en-CA')
-        end = today.toLocaleDateString('en-CA')
+        const endDay = new Date()
+        endDay.setHours(23, 59, 59, 999)
+        const startDay = new Date(endDay.getTime() - 7 * 24 * 60 * 60 * 1000)
+        startDay.setHours(0, 0, 0, 0)
+        start = startDay.toISOString()
+        end = endDay.toISOString()
       } else if (dateFilter === 'month') {
         const today = new Date()
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        firstDay.setHours(0, 0, 0, 0)
         const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-        start = firstDay.toLocaleDateString('en-CA')
-        end = lastDay.toLocaleDateString('en-CA')
+        lastDay.setHours(23, 59, 59, 999)
+        start = firstDay.toISOString()
+        end = lastDay.toISOString()
       }
 
       if (start) params.append('startDate', start)
