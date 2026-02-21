@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import api from '@/lib/api'
 import { maskCurrency, maskValue } from '@/lib/mask-value'
+import { exportDuesReport } from '@/lib/pdf-export'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
 import { useQuery } from '@tanstack/react-query'
@@ -179,9 +180,18 @@ export default function DuesPage() {
                 : 'All student dues and payment status'}
             </p>
           </div>
-          <Button variant="outline" onClick={() => router.push('/dashboard')}>
-            ← Back to Dashboard
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => exportDuesReport(sortedDues, filter)}
+              className="bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
+            >
+              <span className="mr-2">📥</span> Download List (with details)
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/dashboard')}>
+              ← Back to Dashboard
+            </Button>
+          </div>
         </div>
 
         {/* Summary Card */}

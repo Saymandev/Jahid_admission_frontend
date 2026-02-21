@@ -4,13 +4,14 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { PaymentCalendar } from '@/components/payment-calendar'
 import { ProtectedRoute } from '@/components/protected-route'
 import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
+import { SwitchRoomDialog } from '@/components/switch-room-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,6 +60,7 @@ export default function StudentDetailPage() {
   const [reactivateRoomId, setReactivateRoomId] = useState('')
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [paymentToDelete, setPaymentToDelete] = useState<string | null>(null)
+  const [showSwitchRoom, setShowSwitchRoom] = useState(false)
 
 
 
@@ -373,9 +375,21 @@ export default function StudentDetailPage() {
                 <span className="text-secondary">Phone: </span>
                 {student.phone}
               </div>
-              <div className="text-sm">
-                <span className="text-secondary">Room: </span>
-                {student.roomId?.name} (Bed {student.bedNumber})
+              <div className="text-sm flex items-center justify-between">
+                <div>
+                  <span className="text-secondary">Room: </span>
+                  {student.roomId?.name} (Bed {student.bedNumber})
+                </div>
+                {student.status === 'active' && user?.role === 'admin' && (
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    className="h-auto p-0 text-primary font-bold"
+                    onClick={() => setShowSwitchRoom(true)}
+                  >
+                    Switch Room
+                  </Button>
+                )}
               </div>
               <div className="text-sm">
                 <span className="text-secondary">Monthly Rent: </span>
@@ -1508,6 +1522,15 @@ export default function StudentDetailPage() {
           )}
           confirmText="Confirm & Record Payment"
           isLoading={paymentMutation.isPending}
+        />
+        <SwitchRoomDialog
+          isOpen={showSwitchRoom}
+          onClose={() => setShowSwitchRoom(false)}
+          studentId={studentId}
+          currentRoomId={student.roomId?._id}
+          currentBedNumber={student.bedNumber}
+          currentRent={student.monthlyRent}
+          studentName={student.name}
         />
       </div>
     </ProtectedRoute>

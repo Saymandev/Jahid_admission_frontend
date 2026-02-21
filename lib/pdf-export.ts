@@ -323,3 +323,52 @@ export function exportTransactionHistory(transactions: any[], filters: { dateFil
 
   doc.save(`transaction-history-${new Date().toLocaleDateString('en-CA')}.pdf`)
 }
+
+// Residential Dues Report PDF
+export function exportDuesReport(dues: any[], filter: string = 'all') {
+  const doc = new jsPDF()
+
+  // Header
+  doc.setFontSize(18)
+  doc.text('Residential Dues Report', 14, 20)
+  
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  const filterLabel = filter === '2plus' ? '2+ Months Due' : filter === 'one' ? '1 Month Due' : 'All Dues'
+  doc.text(`Filter: ${filterLabel}`, 14, 28)
+  doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 34)
+
+  // Draw Table
+  const tableData = dues.map((d: any) => [
+    d.studentId || 'N/A',
+    d.studentName || 'N/A',
+    d.studentRoom?.name || 'N/A',
+    d.studentPhone || 'N/A',
+    (d.monthlyRent || 0).toLocaleString(),
+    d.consecutiveDueMonths || 0,
+    (d.totalDue || 0).toLocaleString(),
+  ])
+
+  autoTable(doc, {
+    head: [['ID', 'Name', 'Room', 'Phone', 'Rent', 'Months', 'Total Due (BDT)']],
+    body: tableData,
+    startY: 40,
+    theme: 'grid',
+    headStyles: { fillColor: [231, 76, 60] }, // Red for dues
+    columnStyles: {
+      6: { halign: 'right', fontStyle: 'bold', textColor: [231, 76, 60] }
+    }
+  })
+
+  const finalY = (doc as any).lastAutoTable?.finalY || 40
+
+  // Summary
+  const totalDue = dues.reduce((sum, d) => sum + (d.totalDue || 0), 0)
+  
+  doc.setFontSize(12)
+  doc.setTextColor(0)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`TOTAL OUTSTANDING: ${totalDue.toLocaleString()} BDT`, 196, finalY + 15, { align: 'right' })
+
+  doc.save(`dues-report-${new Date().toLocaleDateString('en-CA')}.pdf`)
+}
