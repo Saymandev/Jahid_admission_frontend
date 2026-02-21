@@ -90,7 +90,7 @@ export default function StudentsPage() {
   } = useForm<StudentFormData>({
     resolver: zodResolver(studentSchema),
     defaultValues: {
-      joiningDate: new Date().toISOString().split('T')[0],
+      joiningDate: new Date().toLocaleDateString('en-CA'),
     },
   })
 
@@ -312,7 +312,7 @@ export default function StudentsPage() {
       setEditingStudent(null)
       setFoundStudent(null)
       reset({
-        joiningDate: new Date().toISOString().split('T')[0],
+        joiningDate: new Date().toLocaleDateString('en-CA'),
       })
     } catch (error: any) {
       console.error('Submission failed', error)
@@ -346,7 +346,7 @@ export default function StudentsPage() {
                   setShowForm(false)
                   setFoundStudent(null)
                   reset({
-                    joiningDate: new Date().toISOString().split('T')[0],
+                    joiningDate: new Date().toLocaleDateString('en-CA'),
                   })
                 } else {
                   setShowForm(true)
@@ -465,7 +465,7 @@ export default function StudentsPage() {
                               roomId: student.roomId?._id,
                               bedNumber: bedValue, 
                               monthlyRent: student.monthlyRent?.toString(),
-                              joiningDate: student.joiningDate ? new Date(student.joiningDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+                              joiningDate: student.joiningDate ? new Date(student.joiningDate).toISOString().split('T')[0] : new Date().toLocaleDateString('en-CA'),
                               securityDeposit: student.securityDeposit?.toString(),
                               unionFee: student.unionFee?.toString(),
                             })

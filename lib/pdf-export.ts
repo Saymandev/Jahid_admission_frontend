@@ -252,3 +252,74 @@ export function exportMonthlyCollectionReport(month: string, data: any[]) {
 
   doc.save(`monthly-collection-${month}.pdf`)
 }
+
+// Transaction History PDF
+export function exportTransactionHistory(transactions: any[], filters: { dateFilter: string; startDate?: string; endDate?: string; userName?: string | null }, totalAmount: number) {
+  const doc = new jsPDF()
+
+  // Header
+  doc.setFontSize(18)
+  doc.text('Transaction History Report', 14, 20)
+
+  // Filter Info
+  doc.setFontSize(10)
+  doc.setTextColor(100)
+  let filterText = `Period: ${filters.dateFilter === 'all' ? 'All Time' : filters.dateFilter}`
+  if (filters.startDate || filters.endDate) {
+    filterText += ` (${filters.startDate || ''} to ${filters.endDate || ''})`
+  }
+  doc.text(filterText, 14, 28)
+  
+  if (filters.userName) {
+    doc.text(`Recorded By: ${filters.userName}`, 14, 34)
+  }
+
+  // Draw Table
+  const tableData = transactions.map((t: any) => [
+    new Date(t.paymentDate || t.createdAt).toLocaleDateString(),
+    t.studentName || 'Unknown',
+    t.type === 'residential' ? 'Residential' : 'Coaching',
+    t.paymentType === 'refund' ? 'Security Refund' : 
+    (t.paymentType === 'adjustment' ? 'Adjustment' : (t.billingMonth ? `Rent (${t.billingMonth})` : (t.type === 'coaching' ? 'Course Fee' : t.paymentType))),
+    t.paymentMethod.toUpperCase(),
+    `${t.paymentType === 'refund' ? '-' : ''}${t.amount.toLocaleString()}`,
+  ])
+
+  autoTable(doc, {
+    head: [['Date', 'Student', 'Source', 'Type/Month', 'Method', 'Amount (BDT)']],
+    body: tableData,
+    startY: filters.userName ? 40 : 36,
+    theme: 'grid',
+    headStyles: { fillColor: [41, 128, 185] },
+    columnStyles: {
+      5: { halign: 'right', fontStyle: 'bold' }
+    },
+    didParseCell: (data) => {
+      if (data.section === 'body' && data.column.index === 5) {
+        const text = data.cell.text[0];
+        if (text.startsWith('-')) {
+          data.cell.styles.textColor = [231, 76, 60]; // Red for refunds
+        }
+      }
+    }
+  })
+
+  const finalY = (doc as any).lastAutoTable?.finalY || 40
+
+  // Final Summary
+  doc.setFontSize(12)
+  doc.setTextColor(0)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`TOTAL AMOUNT RECEIVED: ${totalAmount.toLocaleString()} BDT`, 140, finalY + 15, { align: 'right' })
+  
+  doc.setFontSize(8)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(100)
+  doc.text('*(Total Amount = Payments - Refunds. Adjustments excluded)', 140, finalY + 21, { align: 'right' })
+
+  // Footer with timestamp
+  const dateStr = new Date().toLocaleString()
+  doc.text(`Generated on: ${dateStr}`, 14, finalY + 15)
+
+  doc.save(`transaction-history-${new Date().toLocaleDateString('en-CA')}.pdf`)
+}

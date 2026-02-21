@@ -7,8 +7,11 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'Accounting Management System',
-  description: 'Residential & Coaching Accounting Management System',
+  title: 'Zahid-Admission',
+  description: 'Excellence in Residential & Coaching Management',
+  icons: {
+    icon: '/favicon.ico',
+  },
 }
 
 export default function RootLayout({

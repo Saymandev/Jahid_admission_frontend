@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import api from '@/lib/api'
 import { maskCurrency } from '@/lib/mask-value'
+import { exportTransactionHistory } from '@/lib/pdf-export'
 import { getPusher } from '@/lib/pusher'
 import { showToast } from '@/lib/toast'
 import { cn } from '@/lib/utils'
@@ -51,6 +52,7 @@ export default function TransactionsPage() {
   const [endDate, setEndDate] = useState('')
   const [txnToDelete, setTxnToDelete] = useState<{ id: string; type: 'residential' | 'coaching' } | null>(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isExporting, setIsExporting] = useState<boolean>(false)
   
   const queryClient = useQueryClient()
   const { user } = useAuthStore()
@@ -72,19 +74,19 @@ export default function TransactionsPage() {
 
       if (dateFilter === 'today') {
         const today = new Date()
-        start = today.toISOString().split('T')[0]
+        start = today.toLocaleDateString('en-CA')
         end = start
       } else if (dateFilter === 'week') {
         const today = new Date()
         const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-        start = lastWeek.toISOString().split('T')[0]
-        end = today.toISOString().split('T')[0]
+        start = lastWeek.toLocaleDateString('en-CA')
+        end = today.toLocaleDateString('en-CA')
       } else if (dateFilter === 'month') {
         const today = new Date()
         const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
         const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
-        start = firstDay.toISOString().split('T')[0]
-        end = lastDay.toISOString().split('T')[0]
+        start = firstDay.toLocaleDateString('en-CA')
+        end = lastDay.toLocaleDateString('en-CA')
       }
 
       if (start) params.append('startDate', start)
@@ -196,6 +198,97 @@ export default function TransactionsPage() {
     }
   }, [isAdmin, queryClient])
 
+  const handleExport = async (format: 'csv' | 'pdf') => {
+    try {
+      setIsExporting(true)
+      showToast(`Generating ${format.toUpperCase()}...`, 'info')
+
+      const params = new URLSearchParams()
+      // Fetch high number of records to get "all" matches for current filters
+      params.append('page', '1')
+      params.append('limit', '10000') 
+      if (searchQuery) params.append('search', searchQuery)
+      if (typeFilter !== 'all') params.append('typeFilter', typeFilter)
+      if (userFilter) params.append('userFilter', userFilter)
+
+      let start = startDate
+      let end = endDate
+
+      if (dateFilter === 'today') {
+        start = new Date().toLocaleDateString('en-CA')
+        end = start
+      } else if (dateFilter === 'week') {
+        const today = new Date()
+        const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
+        start = lastWeek.toLocaleDateString('en-CA')
+        end = today.toLocaleDateString('en-CA')
+      } else if (dateFilter === 'month') {
+        const today = new Date()
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1)
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0)
+        start = firstDay.toLocaleDateString('en-CA')
+        end = lastDay.toLocaleDateString('en-CA')
+      }
+
+      if (start) params.append('startDate', start)
+      if (end) params.append('endDate', end)
+
+      const response = await api.get(`/residential/transactions?${params.toString()}`)
+      const { data: allTransactions, totalAmount: filteredTotal } = response.data
+
+      const mappedTransactions = allTransactions.map((t: any) => ({
+        ...t,
+        type: t.source || 'residential',
+        paymentType: (t.paymentMethod === 'adjustment' || t.type === 'adjustment') ? 'adjustment' : (t.type || 'rent'),
+        studentName: t.studentName,
+        paymentDate: t.paymentDate,
+        amount: t.paidAmount || t.amount || 0
+      }))
+
+      if (format === 'csv') {
+        const headers = ['Date', 'Student', 'Source', 'Type/Month', 'Method', 'Amount (BDT)']
+        const csvRows = mappedTransactions.map((t: any) => [
+          new Date(t.paymentDate || t.createdAt).toLocaleDateString(),
+          `"${t.studentName || 'Unknown'}"`,
+          t.type === 'residential' ? 'Residential' : 'Coaching',
+          t.paymentType === 'refund' ? 'Security Refund' : 
+          (t.paymentType === 'adjustment' ? 'Adjustment' : (t.billingMonth ? `Rent (${t.billingMonth})` : (t.type === 'coaching' ? 'Course Fee' : t.paymentType))),
+          t.paymentMethod.toUpperCase(),
+          `${t.paymentType === 'refund' ? '-' : ''}${t.amount}`,
+        ])
+
+        const csvContent = [
+          headers.join(','),
+          ...csvRows.map((row: any) => row.join(',')),
+          `\nTotal Amount Received,,,,,${filteredTotal}`
+        ].join('\n')
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+        const link = document.createElement('a')
+        const url = URL.createObjectURL(blob)
+        link.setAttribute('href', url)
+        link.setAttribute('download', `transactions-${new Date().toLocaleDateString('en-CA')}.csv`)
+        link.style.visibility = 'hidden'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      } else {
+        exportTransactionHistory(
+          mappedTransactions, 
+          { dateFilter, startDate, endDate, userName: selectedUserName }, 
+          filteredTotal
+        )
+      }
+
+      showToast(`${format.toUpperCase()} Exported!`, 'success')
+    } catch (error) {
+      console.error('Export failed', error)
+      showToast('failed to export transactions', 'error')
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   // Only admins can access transactions page
   if (!isAdmin) {
     return (
@@ -221,9 +314,35 @@ export default function TransactionsPage() {
   return (
     <ProtectedRoute>
       <div className="p-6 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Transaction History</h1>
-          <p className="text-secondary mt-1">View all payment transactions</p>
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold">Transaction History</h1>
+            <p className="text-secondary mt-1">View all payment transactions</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              onClick={() => handleExport('csv')}
+              disabled={isExporting || totalTransactions === 0}
+              className="flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              CSV
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => handleExport('pdf')}
+              disabled={isExporting || totalTransactions === 0}
+              className="flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              PDF
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">

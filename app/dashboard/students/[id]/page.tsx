@@ -7,10 +7,10 @@ import { UseSecurityDepositForm } from '@/components/security-deposit-forms'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -968,7 +968,7 @@ export default function StudentDetailPage() {
                       id="reactivate-joiningDate"
                       name="joiningDate"
                       type="date"
-                      defaultValue={new Date().toISOString().split('T')[0]}
+                      defaultValue={new Date().toLocaleDateString('en-CA')}
                       required
                     />
                   </div>
@@ -1063,7 +1063,7 @@ export default function StudentDetailPage() {
                         id="paymentDate"
                         type="date"
                         {...register('paymentDate')}
-                        defaultValue={new Date().toISOString().split('T')[0]}
+                        defaultValue={new Date().toLocaleDateString('en-CA')}
                       />
                       <p className="text-[10px] text-muted-foreground">
                         Leave as today for normal payments, or select a past date.

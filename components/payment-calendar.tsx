@@ -65,15 +65,24 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
   const monthEnd = endOfMonth(selectedMonth)
   const days = eachDayOfInterval({ start: monthStart, end: monthEnd })
 
-  const getPaymentColor = (payment: Payment | undefined) => {
-    if (!payment) return 'bg-gray-100 text-gray-600'
-    if (payment.status === 'paid') {
+  const getPaymentColor = (payment: Payment | undefined, willBeCoveredByAdvance?: boolean) => {
+    if (payment?.status === 'paid') {
       // If paid with advance, use a different shade
       if (payment.advanceApplied && payment.advanceApplied > 0) {
         return 'bg-primary/20 text-primary border-primary border-2'
       }
       return 'bg-success/20 text-success border-success'
     }
+
+    // If month is covered by advance (future/unpaid), show blue
+    if (willBeCoveredByAdvance) {
+      return 'bg-primary/20 text-primary border-primary border-2'
+    }
+
+    if (!payment) {
+      return 'bg-gray-100 text-gray-600'
+    }
+    
     if (payment.status === 'partial') return 'bg-warning/20 text-warning border-warning'
     return 'bg-danger/20 text-danger border-danger'
   }
@@ -116,12 +125,12 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
             const rDate = r.paymentDate || r.createdAt
             return rDate && format(parseISO(rDate), 'yyyy-MM-dd') === dateKey && r.paidAmount > 0
           }) || []
-
+ 
           const isFirstDay = day.getDate() === 1
           const isToday = isSameDay(day, new Date())
-          const willBeCoveredByAdvance = isFirstDay && futureMonthsWithAdvance.has(monthKey)
-          const advanceCoverage = futureMonthsWithAdvance.get(monthKey) || 0
-
+          const willBeCoveredByAdvance = futureMonthsWithAdvance.has(monthKey)
+          const advanceCoverage = isFirstDay ? (futureMonthsWithAdvance.get(monthKey) || 0) : 0
+ 
           return (
             <div
               key={day.toString()}
@@ -131,7 +140,7 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
                 }
               }}
               className={`p-2 border rounded-md cursor-pointer hover:shadow-md transition-shadow min-h-[90px] relative ${
-                getPaymentColor(monthlyPayment)
+                getPaymentColor(monthlyPayment, willBeCoveredByAdvance)
               } ${isToday ? 'ring-2 ring-primary bg-primary/5' : ''}`}
               title={`${format(day, 'MMM dd, yyyy')}${isFirstDay ? ` - Monthly Rent: ${monthlyRent} BDT` : ''}`}
             >
@@ -148,24 +157,12 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
                       Due: {monthlyPayment.dueAmount.toLocaleString()}
                     </div>
                   )}
-                </div>
-              )}
-
-              {dayRecords.length > 0 && (
-                <div className="mt-1 space-y-1">
-                  {dayRecords.map((rec: any, idx: number) => (
-                    <div key={idx} className="p-1 bg-white/60 border border-success/30 rounded text-[9px] font-bold leading-tight shadow-sm">
-                      <div className="text-success uppercase text-[7px] mb-0.5">Paid</div>
-                      {rec.paidAmount.toLocaleString()}
+                  {willBeCoveredByAdvance && (
+                    <div className="mt-1 p-1 bg-primary/20 border border-primary/40 rounded text-[9px] font-bold leading-tight shadow-sm animate-pulse">
+                      <div className="text-primary uppercase text-[7px] mb-0.5">Covered By Advance</div>
+                      {advanceCoverage.toLocaleString()}
                     </div>
-                  ))}
-                </div>
-              )}
-
-              {willBeCoveredByAdvance && (
-                <div className="mt-1 p-1 bg-primary/20 border border-primary/40 rounded text-[9px] font-bold leading-tight animate-pulse shadow-sm">
-                  <div className="text-primary uppercase text-[7px] mb-0.5">Advance</div>
-                  {advanceCoverage.toLocaleString()}
+                  )}
                 </div>
               )}
             </div>
@@ -194,7 +191,7 @@ export function PaymentCalendar({ payments, student, monthlyRent, totalAdvance =
           </div>
           {totalAdvance > 0 && (
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-primary/10 border border-primary/40 border-dashed rounded"></div>
+              <div className="w-4 h-4 bg-primary/20 border-2 border-primary rounded"></div>
               <span>Future (Advance)</span>
             </div>
           )}

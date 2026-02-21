@@ -120,7 +120,7 @@ export default function RoomsPage() {
     reset: resetRent,
   } = useForm<RentFormData>({
     defaultValues: {
-      joiningDate: new Date().toISOString().split('T')[0],
+      joiningDate: new Date().toLocaleDateString('en-CA'),
     },
   })
 
@@ -259,7 +259,7 @@ export default function RoomsPage() {
     setSelectedBed({ roomId, bedName, bedPrice })
     setShowRentForm(true)
     resetRent({
-      joiningDate: new Date().toISOString().split('T')[0],
+      joiningDate: new Date().toLocaleDateString('en-CA'),
       monthlyRent: bedPrice.toString(),
     })
   }

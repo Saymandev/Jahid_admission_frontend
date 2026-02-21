@@ -103,6 +103,10 @@ export default function CoachingPage() {
     reset: resetPayment,
   } = useForm<PaymentFormData>({
     resolver: zodResolver(admissionPaymentSchema),
+    defaultValues: {
+      paymentDate: new Date().toLocaleDateString('en-CA'),
+      paymentMethod: 'cash',
+    },
   })
 
   const { data: admissionsData } = useQuery<{
@@ -1039,7 +1043,6 @@ export default function CoachingPage() {
                     id="paymentDate" 
                     type="date" 
                     {...registerPayment('paymentDate')} 
-                    defaultValue={new Date().toISOString().split('T')[0]}
                   />
                   <p className="text-xs text-secondary">Leave as today for current payments, or select past date.</p>
                 </div>

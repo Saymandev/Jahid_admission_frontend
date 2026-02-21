@@ -132,7 +132,7 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
         billingMonth: new Date().toISOString().slice(0, 7),
         paymentMethod: 'cash',
         isAdvance: false,
-        paymentDate: new Date().toISOString().split('T')[0],
+        paymentDate: new Date().toLocaleDateString('en-CA'),
       })
       setIsPaid(false)
     }
@@ -313,7 +313,6 @@ export function QuickPaymentModal({ student: initialStudent, isOpen, onClose }: 
                       id="paymentDate"
                       type="date"
                       {...register('paymentDate')}
-                      defaultValue={new Date().toISOString().split('T')[0]}
                     />
                     <p className="text-[10px] text-muted-foreground">
                       Leave as today for normal payments, or select a past date.
