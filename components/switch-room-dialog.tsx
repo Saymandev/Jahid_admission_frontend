@@ -37,6 +37,7 @@ export function SwitchRoomDialog({
   const [selectedRoomId, setSelectedRoomId] = useState('')
   const [selectedBedNumber, setSelectedBedNumber] = useState<number | null>(null)
   const [newRent, setNewRent] = useState(currentRent)
+  const [switchMode, setSwitchMode] = useState<'prorated' | 'next_month'>('prorated')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // Fetch all available/occupied rooms
@@ -63,11 +64,14 @@ export function SwitchRoomDialog({
       await api.post(`/residential/students/${studentId}/switch-room`, {
         newRoomId: selectedRoomId,
         newBedNumber: selectedBedNumber,
-        newMonthlyRent: newRent
+        newMonthlyRent: newRent,
+        switchMode: switchMode,
+        switchDate: new Date().toISOString()
       })
-      showToast('Room switched successfully', 'success')
+      showToast('Room switched successfully. History Locked.', 'success')
       queryClient.invalidateQueries({ queryKey: ['student', studentId] })
       queryClient.invalidateQueries({ queryKey: ['rooms'] })
+      queryClient.invalidateQueries({ queryKey: ['rooms-for-switch'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
       onClose()
     } catch (error: any) {
@@ -142,7 +146,42 @@ export function SwitchRoomDialog({
               value={newRent}
               onChange={(e) => setNewRent(Number(e.target.value))}
             />
-            <p className="text-xs text-muted-foreground">Current: {currentRent} BDT</p>
+            <p className="text-xs text-muted-foreground">Current Rate: {currentRent} BDT</p>
+          </div>
+
+          <div className="grid gap-2 p-3 bg-muted/30 rounded-lg border">
+            <Label className="text-xs font-bold uppercase text-secondary">Financial adjustment</Label>
+            <div className="flex flex-col gap-2 mt-1">
+              <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-muted/50 border border-transparent has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5 transition-all">
+                <input 
+                  type="radio" 
+                  name="switchMode" 
+                  value="prorated" 
+                  checked={switchMode === 'prorated'}
+                  onChange={() => setSwitchMode('prorated')}
+                  className="w-4 h-4 accent-primary"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">Pro-rated (Fair Mode)</span>
+                  <span className="text-[11px] text-secondary leading-tight">Pay for days in old room + days in new room.</span>
+                </div>
+              </label>
+              
+              <label className="flex items-center gap-2 cursor-pointer p-2 rounded hover:bg-muted/50 border border-transparent has-[:checked]:border-primary/50 has-[:checked]:bg-primary/5 transition-all">
+                <input 
+                  type="radio" 
+                  name="switchMode" 
+                  value="next_month" 
+                  checked={switchMode === 'next_month'}
+                  onChange={() => setSwitchMode('next_month')}
+                  className="w-4 h-4 accent-primary"
+                />
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold">Next Month (Simple)</span>
+                  <span className="text-[11px] text-secondary leading-tight">New rent starts from 1st of next month.</span>
+                </div>
+              </label>
+            </div>
           </div>
         </div>
         <div className="flex justify-end gap-3">

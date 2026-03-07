@@ -70,7 +70,8 @@ export default function DuesPage() {
       const statusPromises = students.map((student: any) =>
         api.get(`/residential/students/${student._id}/due-status`).then(res => ({
           ...res.data,
-          studentId: student._id,
+          _id: student._id, // Keep _id for React keys
+          studentId: student.studentId || student._id, // Use human-readable studentId
           studentName: res.data.student?.name || student.name,
           studentPhone: res.data.student?.phone || student.phone,
           studentRoom: res.data.student?.roomId || student.roomId,

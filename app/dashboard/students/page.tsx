@@ -735,7 +735,7 @@ export default function StudentsPage() {
                     />
                   </div>
                   
-                  <div className="space-y-2">
+                   <div className="space-y-2">
                     <Label htmlFor="securityDeposit">Security Deposit (BDT)</Label>
                     <Input
                       id="securityDeposit"
@@ -743,7 +743,9 @@ export default function StudentsPage() {
                       min="0"
                       step="0.01"
                       {...register('securityDeposit')}
+                      disabled={!!editingStudent}
                     />
+                    {editingStudent && <p className="text-[10px] text-secondary italic">Security money can only be set during admission or reactivation.</p>}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="unionFee">Union Fee (BDT)</Label>
@@ -754,21 +756,24 @@ export default function StudentsPage() {
                       step="0.01"
                       placeholder="One-time non-refundable fee"
                       {...register('unionFee')}
+                      disabled={!!editingStudent}
                     />
+                    {editingStudent && <p className="text-[10px] text-secondary italic">Union fees are set during admission or reactivation.</p>}
                   </div>
-                  {!editingStudent && (
-                    <div className="space-y-2">
-                      <Label htmlFor="initialRentPaid">Initial Rent Paid (BDT)</Label>
-                      <Input
-                        id="initialRentPaid"
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        placeholder="Amount paid today for rent"
-                        {...register('initialRentPaid')}
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="initialRentPaid">{editingStudent ? 'Add Rent Payment (BDT)' : 'Initial Rent Paid (BDT)'}</Label>
+                    <Input
+                      id="initialRentPaid"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      placeholder={editingStudent ? "Record a payment now" : "Amount paid today for rent"}
+                      {...register('initialRentPaid')}
+                    />
+                    {editingStudent && (
+                      <p className="text-[10px] text-primary italic">This will record an additional rent payment for the current month.</p>
+                    )}
+                  </div>
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
                   <Button
