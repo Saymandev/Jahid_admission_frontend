@@ -131,7 +131,7 @@ export default function StudentDetailPage() {
     }
   }, [studentId, selectedBillingMonth, isAdvanceChecked, showPaymentForm])
 
-  const { data: student } = useQuery({
+  const { data: student, isLoading: loadingStudent, isError: studentError } = useQuery({
     queryKey: ['student', studentId],
     queryFn: async () => {
       const response = await api.get(`/residential/students/${studentId}`)
@@ -139,7 +139,7 @@ export default function StudentDetailPage() {
     },
   })
 
-  const { data: dueStatus } = useQuery({
+  const { data: dueStatus, isLoading: loadingDue, isError: dueError } = useQuery({
     queryKey: ['student-due-status', studentId],
     queryFn: async () => {
       const response = await api.get(`/residential/students/${studentId}/due-status`)
@@ -314,11 +314,24 @@ export default function StudentDetailPage() {
     }
   }, [showCheckoutForm, student, dueStatus])
 
-  if (!student) {
-
+  if (loadingStudent || loadingDue) {
     return (
       <ProtectedRoute>
         <div className="p-6">Loading...</div>
+      </ProtectedRoute>
+    )
+  }
+
+  if (studentError || dueError || !student) {
+    return (
+      <ProtectedRoute>
+        <div className="p-6 text-center space-y-4">
+          <h2 className="text-2xl font-bold text-danger">Error Loading Student</h2>
+          <p className="text-secondary">The student data could not be retrieved. They may not exist or there was a server error.</p>
+          <Button onClick={() => router.push('/dashboard/students')}>
+            Back to Students
+          </Button>
+        </div>
       </ProtectedRoute>
     )
   }

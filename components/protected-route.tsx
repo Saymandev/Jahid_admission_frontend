@@ -25,7 +25,14 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return null
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <p className="text-secondary italic">Redirecting to login...</p>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mx-auto"></div>
+        </div>
+      </div>
+    )
   }
 
   return <>{children}</>
