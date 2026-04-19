@@ -1,19 +1,17 @@
-# Stage 1: Install dependencies
-FROM node:20-alpine AS deps
+# Stage 1: Build the application
+FROM node:20-alpine AS builder
 WORKDIR /app
+
+# Install dependencies and build in one stage to save memory
 COPY package*.json ./
 RUN npm install
 
-# Stage 2: Build the application
-FROM node:20-alpine AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 # Disable telemetry during the build
 ENV NEXT_TELEMETRY_DISABLED 1
 RUN npm run build
 
-# Stage 3: Production runner
+# Stage 2: Production runner
 FROM node:20-alpine AS runner
 WORKDIR /app
 
